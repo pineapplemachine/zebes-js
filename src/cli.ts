@@ -118,16 +118,19 @@ export function zbsInit(logger: ZbsLogger, args: any): number {
         }
     }
     if(args.format === "json") {
+        logger.info("Writing JSON project config file: zebes.json");
         fs.writeFileSync("zebes.json", JSON.stringify(
             template, undefined, 4
         ));
     }
     else if(args.format === "toml") {
+        logger.info("Writing TOML project config file: zebes.toml");
         fs.writeFileSync("zebes.toml", toml.stringify(
             template
         ));
     }
     else if(args.format === "yaml") {
+        logger.info("Writing YAML project config file: zebes.yaml");
         fs.writeFileSync("zebes.yaml", yaml.stringify(
             template
         ));
@@ -143,6 +146,7 @@ export async function zbsRun(
     logger: ZbsLogger, args: any, command?: string
 ): Promise<number> {
     // Find and load project config file
+    logger.trace("Searching for a project config file.");
     const configPath: string = (args.project ?
         path.resolve(process.cwd(), args.project) :
         zbsFindProjectConfigPath()
@@ -197,6 +201,7 @@ export async function zbsRun(
     }
     // Run the specified target
     const targetName = command || args.target;
+    logger.trace(`Preparing to run target "${targetName}".`);
     const targetConfig = project.getTarget(targetName);
     if(!targetConfig) {
         logger.error("No such target:", targetName);
@@ -206,5 +211,6 @@ export async function zbsRun(
         project, targetConfig
     );
     await targetRunner.run();
+    logger.trace(`Finished running target "${targetName}".`);
     return targetRunner.failed ? 1 : 0;
 }

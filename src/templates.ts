@@ -1,3 +1,8 @@
+/**
+ * This module contains Zebes project configuration templates,
+ * to be written using `zebes init`.
+ */
+
 export const zbsInitProjectTemplateC = {
     "systems": [
         {
