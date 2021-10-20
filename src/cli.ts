@@ -187,11 +187,19 @@ function zbsGetProjectConfig(
     logger.info("Reading project config from path:", configPath);
     const loadConfig = zbsLoadProjectConfig(configPath);
     // Report errors in the project file
-    // TODO: Warn about unknown object keys
     if(loadConfig.errors.length) {
         logger.error("Failed to validate project config file.");
+    }
+    if(loadConfig.warnings.length) {
+        logger.warn(`Found ${loadConfig.warnings.length} validation warnings:`);
+        for(const warn of loadConfig.warnings) {
+            logger.warn(warn);
+        }
+    }
+    if(loadConfig.errors.length) {
+        logger.error(`Found ${loadConfig.errors.length} validation failures:`);
         for(const error of loadConfig.errors) {
-            logger.error("Project config validation error:", error);
+            logger.error(error);
         }
     }
     // All done

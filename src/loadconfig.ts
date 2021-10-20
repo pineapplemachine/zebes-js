@@ -48,13 +48,16 @@ export function zbsLoadProjectConfig(configPath: string) {
         throw new Error("Unrecognized project config file format.");
     }
     const errors: string[] = [];
+    const warnings: string[] = [];
     const project = zbsValidateProject(content, {
         path: "project",
         errors: errors,
+        warnings: warnings,
     });
     return {
         project: project,
         path: configPath,
         errors: errors,
+        warnings: warnings,
     };
 }

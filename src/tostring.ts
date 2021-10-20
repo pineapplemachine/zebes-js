@@ -71,12 +71,12 @@ export function zbsArrayToString(
         const lines: string[] = [];
         const itemIndent = indent + "  ";
         for(const item of array) {
-            lines.push(zbsValueToString(item, itemIndent));
+            const itemString = zbsValueToString(item, itemIndent);
+            lines.push(
+                itemString.slice(0, itemIndent.length - 2) + "- " +
+                itemString.slice(itemIndent.length)
+            );
         }
-        lines[0] = (
-            lines[0].slice(0, itemIndent.length - 2) + "- " +
-            lines[0].slice(itemIndent.length)
-        );
         return lines.join("\n");
     }
 }
