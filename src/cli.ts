@@ -13,12 +13,35 @@ import {ZbsLogLevel} from "./logger";
 import {ZbsProject} from "./project";
 import {ZbsProjectTargetRunner} from "./project";
 import {zbsInitProjectTemplates} from "./templates";
+import {zbsProjectToString} from "./tostring";
+import {zbsValueToString} from "./tostring";
 
 /**
 
 TODO: add some things
-zebes info # print out project config data
---dry-run
+fix incremental builds
+make d work
+zebes info: print out project config data
+--dry-run DONE
+validate: warn unknown keys
+config tostring functions DONE
+improve action interfaces DONE
+action type: branch
+action type: fetch
+action type: inflate
+action type: rename
+action type: copy
+action filters (e.g. based on platform)
+action messages (log, warn, error on success and/or failure)
+actions run iteratively, not recursively DONE
+track objects for compile actions, refer to them in link actions
+local config edits ?
+allow json comments, trailing commas etc (+flag to disable)
+custom templates directory
+fix undefined config list values always parsing as empty list
+
+GOAL:
+configure to work with raylib-cpp
 
 */
 
@@ -88,6 +111,10 @@ export async function zbsMain() {
         const status = zbsInit(logger, args);
         process.exit(status);
     }
+    else if(args.command === "info") {
+        const status = zbsInfo(logger, args);
+        process.exit(status);
+    }
     else if(args.command === "run") {
         const status = await zbsRun(logger, args);
         process.exit(status);
@@ -142,31 +169,55 @@ export function zbsInit(logger: ZbsLogger, args: any): number {
     return 0;
 }
 
-export async function zbsRun(
-    logger: ZbsLogger, args: any, command?: string
-): Promise<number> {
-    // Find and load project config file
+function zbsGetProjectConfig(
+    logger: ZbsLogger, argsProject?: string | undefined
+) {
+    // Find the project file
     logger.trace("Searching for a project config file.");
-    const configPath: string = (args.project ?
-        path.resolve(process.cwd(), args.project) :
+    const configPath: string = (argsProject ?
+        path.resolve(process.cwd(), argsProject) :
         zbsFindProjectConfigPath()
     );
+    // Handle the case where none was found
     if(!configPath) {
-        logger.error("No Zebes project config file was found.");
-        return 1;
+        logger.info("No Zebes project config file was found.");
+        return undefined;
     }
+    // Read the project file
     logger.info("Reading project config from path:", configPath);
     const loadConfig = zbsLoadProjectConfig(configPath);
+    // Report errors in the project file
+    // TODO: Warn about unknown object keys
     if(loadConfig.errors.length) {
         logger.error("Failed to validate project config file.");
         for(const error of loadConfig.errors) {
             logger.error("Project config validation error:", error);
         }
+    }
+    // All done
+    return loadConfig;
+}
+
+export function zbsInfo(logger: ZbsLogger, args: any): number {
+    const loadConfig = zbsGetProjectConfig(logger, args.project);
+    if(loadConfig && loadConfig.project) {
+        logger.info("Project config:");
+        logger.info(zbsValueToString(loadConfig.project, "  "));
+    }
+    return (loadConfig && loadConfig.errors.length) ? 1 : 0;
+}
+
+export async function zbsRun(
+    logger: ZbsLogger, args: any, command?: string
+): Promise<number> {
+    // Get project configuration
+    const loadConfig = zbsGetProjectConfig(logger, args.project);
+    if(!loadConfig || !loadConfig.project) {
         return 1;
     }
     const project = new ZbsProject(
-        path.dirname(configPath),
-        configPath,
+        path.dirname(loadConfig.path),
+        loadConfig.path,
         loadConfig.project,
         logger,
     );
@@ -199,6 +250,7 @@ export async function zbsRun(
     if(project.dryRun) {
         logger.info("Running target in dry-run mode.");
     }
+    logger.trace(() => zbsProjectToString(project));
     // Run the specified target
     const targetName = command || args.target;
     logger.trace(`Preparing to run target "${targetName}".`);

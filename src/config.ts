@@ -31,11 +31,12 @@ export interface ZbsConfigSystem {
     linkOutputArg?: string;
 }
 
-export interface ZbsConfigActionInlineShell {
+export interface ZbsConfigActionShell {
     type: "shell";
-    nextAction?: ZbsConfigActionInline | string;
-    nextActionFailure?: ZbsConfigActionInline | string;
-    nextActionFinal?: ZbsConfigActionInline | string;
+    name?: string;
+    nextAction?: ZbsConfigAction | string;
+    nextActionFailure?: ZbsConfigAction | string;
+    nextActionFinal?: ZbsConfigAction | string;
     ignoreFailure?: boolean;
     system?: string;
     env?: {[name: string]: string};
@@ -43,18 +44,20 @@ export interface ZbsConfigActionInlineShell {
     commands: string[];
 }
 
-export interface ZbsConfigActionInlineRemove {
+export interface ZbsConfigActionRemove {
     type: "remove";
-    nextAction?: ZbsConfigActionInline | string;
+    name?: string;
+    nextAction?: ZbsConfigAction | string;
     cwd?: string;
     removePaths: string[];
 }
 
-export interface ZbsConfigActionInlineCompile {
+export interface ZbsConfigActionCompile {
     type: "compile";
-    nextAction?: ZbsConfigActionInline | string;
-    nextActionFailure?: ZbsConfigActionInline | string;
-    nextActionFinal?: ZbsConfigActionInline | string;
+    name?: string;
+    nextAction?: ZbsConfigAction | string;
+    nextActionFailure?: ZbsConfigAction | string;
+    nextActionFinal?: ZbsConfigAction | string;
     ignoreFailure?: boolean;
     system?: string;
     env?: {[name: string]: string};
@@ -69,11 +72,12 @@ export interface ZbsConfigActionInlineCompile {
     outputPath: string;
 }
 
-export interface ZbsConfigActionInlineLink {
+export interface ZbsConfigActionLink {
     type: "link";
-    nextAction?: ZbsConfigActionInline | string;
-    nextActionFailure?: ZbsConfigActionInline | string;
-    nextActionFinal?: ZbsConfigActionInline | string;
+    name?: string;
+    nextAction?: ZbsConfigAction | string;
+    nextActionFailure?: ZbsConfigAction | string;
+    nextActionFinal?: ZbsConfigAction | string;
     ignoreFailure?: boolean;
     system?: string;
     env?: {[name: string]: string};
@@ -86,33 +90,6 @@ export interface ZbsConfigActionInlineLink {
     outputPath: string;
 }
 
-export type ZbsConfigActionInline = (
-    ZbsConfigActionInlineShell |
-    ZbsConfigActionInlineRemove |
-    ZbsConfigActionInlineCompile |
-    ZbsConfigActionInlineLink
-);
-
-export interface ZbsConfigActionShell
-    extends ZbsConfigActionInlineShell {
-    name: string;
-}
-
-export interface ZbsConfigActionRemove
-    extends ZbsConfigActionInlineRemove {
-    name: string;
-}
-
-export interface ZbsConfigActionCompile
-    extends ZbsConfigActionInlineCompile {
-    name: string;
-}
-
-export interface ZbsConfigActionLink
-    extends ZbsConfigActionInlineLink {
-    name: string;
-}
-
 export type ZbsConfigAction = (
     ZbsConfigActionShell |
     ZbsConfigActionRemove |
@@ -120,7 +97,12 @@ export type ZbsConfigAction = (
     ZbsConfigActionLink
 );
 
-export type ZbsConfigActionType = ("shell" | "compile" | "link");
+export type ZbsConfigActionType = (
+    "shell" |
+    "remove" |
+    "compile" |
+    "link"
+);
 
 export interface ZbsConfigTarget {
     name: string;
@@ -135,5 +117,5 @@ export interface ZbsConfigTarget {
     linkArgs?: string[];
     libraryPaths?: string[];
     libraries?: string[];
-    actions: (ZbsConfigActionInline | string)[];
+    actions: (ZbsConfigAction | string)[];
 }

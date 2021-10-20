@@ -1,12 +1,10 @@
 import {ZbsConfigProject} from "./config";
 import {ZbsConfigSystem} from "./config";
-import {ZbsConfigActionInline} from "./config";
-import {ZbsConfigActionInlineShell} from "./config";
-import {ZbsConfigActionInlineRemove} from "./config";
-import {ZbsConfigActionInlineCompile} from "./config";
-import {ZbsConfigActionInlineLink} from "./config";
-import {ZbsConfigActionType} from "./config";
 import {ZbsConfigAction} from "./config";
+import {ZbsConfigActionShell} from "./config";
+import {ZbsConfigActionRemove} from "./config";
+import {ZbsConfigActionCompile} from "./config";
+import {ZbsConfigActionLink} from "./config";
 import {ZbsConfigTarget} from "./config";
 
 export interface ZbsValidateContext {
@@ -231,7 +229,7 @@ export function zbsValidateAction(
 
 export function zbsValidateActionStringOrInline(
     value: any, context: ZbsValidateContext
-): ZbsConfigActionInline | string | undefined {
+): ZbsConfigAction | string | undefined {
     if(value === undefined || (value && typeof(value) === "string")) {
         return value;
     }
@@ -239,16 +237,29 @@ export function zbsValidateActionStringOrInline(
         return zbsValidateActionInline(value, context) || "";
     }
 }
+
+export function zbsValidateRequiredActionStringOrInline(
+    value: any, context: ZbsValidateContext
+): ZbsConfigAction | string {
+    const action = zbsValidateActionStringOrInline(value, context);
+    if(!action) {
+        context.errors.push(
+            context.path + ": Must be either an action name string " +
+            " or an action object."
+        );
+    }
+    return action || "";
+}
     
 export function zbsValidateActionInline(
     value: any, context: ZbsValidateContext
-): ZbsConfigActionInline | undefined {
+): ZbsConfigAction | undefined {
     if(!value || typeof(value) !== "object") {
         context.errors.push(context.path + ": Must be an object.");
         return undefined;
     }
     if(value.type === "shell") {
-        return <ZbsConfigActionInlineShell> zbsValidateObject({
+        return <ZbsConfigActionShell> zbsValidateObject({
             type: zbsValidateExactString("shell"),
             nextAction: zbsValidateActionStringOrInline,
             nextActionFailure: zbsValidateActionStringOrInline,
@@ -261,7 +272,7 @@ export function zbsValidateActionInline(
         })(value, context);
     }
     else if(value.type === "remove") {
-        return <ZbsConfigActionInlineRemove> zbsValidateObject({
+        return <ZbsConfigActionRemove> zbsValidateObject({
             type: zbsValidateExactString("remove"),
             nextAction: zbsValidateActionStringOrInline,
             cwd: zbsValidateString,
@@ -269,7 +280,7 @@ export function zbsValidateActionInline(
         })(value, context);
     }
     else if(value.type === "compile") {
-        return <ZbsConfigActionInlineCompile> zbsValidateObject({
+        return <ZbsConfigActionCompile> zbsValidateObject({
             type: zbsValidateExactString("compile"),
             nextAction: zbsValidateActionStringOrInline,
             nextActionFailure: zbsValidateActionStringOrInline,
@@ -289,7 +300,7 @@ export function zbsValidateActionInline(
         })(value, context);
     }
     else if(value.type === "link") {
-        return <ZbsConfigActionInlineLink> zbsValidateObject({
+        return <ZbsConfigActionLink> zbsValidateObject({
             type: zbsValidateExactString("link"),
             nextAction: zbsValidateActionStringOrInline,
             nextActionFailure: zbsValidateActionStringOrInline,
@@ -331,8 +342,9 @@ export function zbsValidateTarget(
         linkArgs: zbsValidateStringList,
         libraryPaths: zbsValidateStringList,
         libraries: zbsValidateStringList,
-        actions: zbsValidateDefinedList<ZbsConfigActionInline>(
-            zbsValidateActionInline
+        // TODO: Also accept action names
+        actions: zbsValidateDefinedList<ZbsConfigAction | string>(
+            zbsValidateRequiredActionStringOrInline
         ),
     })(value, context);
 }

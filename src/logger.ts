@@ -16,7 +16,9 @@ export class ZbsLogger {
     
     log(level: number, message: any, ...rest: any[]) {
         if(level >= this.level) {
-            console.log(message, ...rest);
+            console.log(message, ...rest.map(
+                (value) => (typeof(value) === "function" ? value() : value)
+            ));
         }
     }
     

@@ -54,6 +54,7 @@ export function zbsLoadProjectConfig(configPath: string) {
     });
     return {
         project: project,
+        path: configPath,
         errors: errors,
     };
 }

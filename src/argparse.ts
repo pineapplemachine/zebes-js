@@ -30,6 +30,15 @@ export function zbsGetArgParser(): ArgumentParser {
         choices: ["json", "toml", "yaml"],
         help: "Save the project file using the given data format.",
     });
+    // zbs info
+    const argParserInfo = argSubparsers.add_parser("info", {
+        help: "Show information about the current Zebes project.",
+    });
+    zbsArgParserAddLoggerArgs(argParserInfo);
+    argParserInfo.add_argument("-p", "--project", {
+        action: "store_true",
+        help: "Specify path to a Zebes project configuration file.",
+    });
     // zbs run
     const argParserRun = argSubparsers.add_parser("run", {
         help: "Execute the project target with a given name.",
@@ -77,7 +86,7 @@ export function zbsGetArgParser(): ArgumentParser {
     return argParser;
 }
 
-function zbsArgParserAddRunTargetArgs(parser: ArgumentParser) {
+function zbsArgParserAddLoggerArgs(parser: ArgumentParser) {
     parser.add_argument("-v", "--verbose", {
         action: "store_true",
         help: "Show more information in stdout than usual.",
@@ -90,6 +99,10 @@ function zbsArgParserAddRunTargetArgs(parser: ArgumentParser) {
         action: "store_true",
         help: "Don't log anything to stdout.",
     });
+}
+
+function zbsArgParserAddRunTargetArgs(parser: ArgumentParser) {
+    zbsArgParserAddLoggerArgs(parser);
     parser.add_argument("-y", "--yes", {
         action: "store_true",
         help: "Confirm yes/no questions without an interactive prompt.",

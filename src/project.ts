@@ -1,4 +1,3 @@
-import * as child_process from "child_process";
 import * as fs from "fs";
 import * as path from "path";
 
@@ -8,13 +7,11 @@ import * as micromatch from "micromatch";
 
 import {ZbsConfigProject} from "./config";
 import {ZbsConfigSystem} from "./config";
-import {ZbsConfigActionInline} from "./config";
-import {ZbsConfigActionType} from "./config";
 import {ZbsConfigAction} from "./config";
-import {ZbsConfigActionInlineShell} from "./config";
-import {ZbsConfigActionInlineRemove} from "./config";
-import {ZbsConfigActionInlineCompile} from "./config";
-import {ZbsConfigActionInlineLink} from "./config";
+import {ZbsConfigActionShell} from "./config";
+import {ZbsConfigActionRemove} from "./config";
+import {ZbsConfigActionCompile} from "./config";
+import {ZbsConfigActionLink} from "./config";
 import {ZbsConfigTarget} from "./config";
 import {ZbsDependencyMap} from "./dependencies";
 import {ZbsError} from "./error";
@@ -23,42 +20,51 @@ import {zbsProcessExec} from "./process";
 import {zbsProcessSpawn} from "./process";
 import {zbsPromiseAllLimitSettle} from "./promise";
 import {ZbsPrompt} from "./prompt";
+import {zbsValueToString} from "./tostring";
 
 function zbsIsActionShell(
-    value: ZbsConfigAction | ZbsConfigActionInline
-): value is ZbsConfigActionInlineShell {
-    return value && typeof(value) === "object" && value.type === "shell";
+    value: ZbsConfigAction
+): value is ZbsConfigActionShell {
+    return value && typeof(value) === "object" && (
+        value.type === "shell"
+    );
 }
 
 function zbsIsActionRemove(
-    value: ZbsConfigAction | ZbsConfigActionInline
-): value is ZbsConfigActionInlineRemove {
-    return value && typeof(value) === "object" && value.type === "remove";
+    value: ZbsConfigAction
+): value is ZbsConfigActionRemove {
+    return value && typeof(value) === "object" && (
+        value.type === "remove"
+    );
 }
 
 function zbsIsActionCompile(
-    value: ZbsConfigAction | ZbsConfigActionInline
-): value is ZbsConfigActionInlineCompile {
-    return value && typeof(value) === "object" && value.type === "compile";
+    value: ZbsConfigAction
+): value is ZbsConfigActionCompile {
+    return value && typeof(value) === "object" && (
+        value.type === "compile"
+    );
 }
 
 function zbsIsActionLink(
-    value: ZbsConfigAction | ZbsConfigActionInline
-): value is ZbsConfigActionInlineLink {
-    return value && typeof(value) === "object" && value.type === "link";
+    value: ZbsConfigAction
+): value is ZbsConfigActionLink {
+    return value && typeof(value) === "object" && (
+        value.type === "link"
+    );
 }
 
 export class ZbsConfigHelper {
     project: ZbsConfigProject | undefined;
     system: ZbsConfigSystem | undefined;
     target: ZbsConfigTarget | undefined;
-    action: ZbsConfigActionInline | undefined;
+    action: ZbsConfigAction | undefined;
     
     constructor(
         project?: ZbsConfigProject | undefined,
         system?: ZbsConfigSystem | undefined,
         target?: ZbsConfigTarget | undefined,
-        action?: ZbsConfigActionInline | undefined,
+        action?: ZbsConfigAction | undefined,
     ) {
         this.project = project;
         this.system = system;
@@ -160,7 +166,7 @@ export class ZbsProject {
         this.dryRun = false;
         this.parallel = 0;
         this.prompt = new ZbsPrompt();
-        function buildMap<T extends {name: string}>(
+        function buildMap<T extends {name?: string | undefined}>(
             list: T[] | null | undefined
         ): {[name: string]: T} {
             const map: {[name: string]: T} = {};
@@ -181,7 +187,7 @@ export class ZbsProject {
     }
     
     getSystem(
-        system: ZbsConfigSystem | string
+        system: ZbsConfigSystem | string | undefined
     ): ZbsConfigSystem | undefined {
         if(typeof(system) === "string") {
             return this.systemsMap[system];
@@ -192,7 +198,7 @@ export class ZbsProject {
     }
     
     getTarget(
-        target: ZbsConfigTarget | string
+        target: ZbsConfigTarget | string | undefined
     ): ZbsConfigTarget | undefined {
         if(typeof(target) === "string") {
             return this.targetsMap[target];
@@ -203,8 +209,8 @@ export class ZbsProject {
     }
     
     getAction(
-        action: ZbsConfigActionInline | string
-    ): ZbsConfigActionInline | undefined {
+        action: ZbsConfigAction | string | undefined
+    ): ZbsConfigAction | undefined {
         if(typeof(action) === "string") {
             return this.actionsMap[action];
         }
@@ -232,7 +238,8 @@ export class ZbsProjectTargetRunner {
     
     async run() {
         this.logger.info("Running target:", this.target.name);
-        this.logger.trace("Target config:", this.target);
+        this.logger.trace("Target config:");
+        this.logger.trace(() => zbsValueToString(this.target, "  "));
         if(!this.target.actions || !this.target.actions.length) {
             this.logger.warn(
                 `Target "${this.target.name}" has no actions to run.`
@@ -259,6 +266,9 @@ export class ZbsProjectTargetRunner {
                     this.logger.info("Action failed. (Ignoring.)");
                 }
                 else {
+                    this.logger.error(
+                        "Aborting target execution: Action failed."
+                    );
                     this.failed = true;
                     break;
                 }
@@ -271,22 +281,24 @@ export class ZbsProjectActionRunner {
     project: ZbsProject;
     system: ZbsConfigSystem | undefined;
     target: ZbsConfigTarget | undefined;
-    action: ZbsConfigActionInline;
+    action: ZbsConfigAction;
     failed: boolean;
+    malformed: boolean;
     logger: ZbsLogger;
     configHelper: ZbsConfigHelper;
-    actionHistory: ZbsConfigActionInline[];
+    actionHistory: ZbsConfigAction[];
     
     constructor(
         project: ZbsProject,
         target: ZbsConfigTarget | undefined,
-        action: ZbsConfigActionInline,
-        actionHistory?: ZbsConfigActionInline[],
+        action: ZbsConfigAction,
+        actionHistory?: ZbsConfigAction[],
     ) {
         this.project = project;
         this.target = target;
         this.action = action;
         this.failed = false;
+        this.malformed = false;
         this.logger = project.logger;
         this.actionHistory = actionHistory || [];
         this.configHelper = new ZbsConfigHelper(
@@ -298,14 +310,17 @@ export class ZbsProjectActionRunner {
         if(system && !this.system) {
             this.logger.error(`Unknown system "${system}".`);
             this.failed = true;
+            this.malformed = true;
         }
         else if(!this.system && this.action.type === "compile") {
             this.logger.error("Compile action must have an associated system.");
             this.failed = true;
+            this.malformed = true;
         }
         else if(!this.system && this.action.type === "link") {
             this.logger.error("Link action must have an associated system.");
             this.failed = true;
+            this.malformed = true;
         }
         this.configHelper.system = this.system;
     }
@@ -359,18 +374,61 @@ export class ZbsProjectActionRunner {
     }
     
     async run() {
-        if(this.failed) {
-            this.logger.trace("Aborting action: Failed before running.");
+        // Run this action
+        const thisNextActions = await this.runThisAction();
+        if(this.malformed ||
+            !Array.isArray(thisNextActions) ||
+            !thisNextActions.length
+        ) {
             return;
         }
-        if((<any> this.action).name) {
-            this.logger.info("Running action:", (<any> this.action).name);
+        // Run next actions (queue of stacks)
+        // TODO: make this configurable
+        const actionsCountMax: number = 100000;
+        let actionsCount: number = 0;
+        const actionsQueue: (ZbsConfigAction | string)[][] = [
+            thisNextActions,
+        ];
+        let actionsQueueIndex: number = 0;
+        while(actionsQueueIndex < actionsQueue.length) {
+            const actionsStack = actionsQueue[actionsQueueIndex];
+            const action = actionsStack.pop();
+            if(!action || !actionsStack.length) {
+                actionsQueueIndex++;
+            }
+            if(action) {
+                const nextActions = this.runNextAction(action);
+                if(Array.isArray(nextActions) && nextActions.length) {
+                    actionsQueue.push(nextActions);
+                }
+            }
+            if(actionsCount++ > actionsCountMax) {
+                this.logger.error(
+                    `Exceeded maximum actions count (${actionsCountMax}). ` +
+                    `Are you sure this was intentional?`
+                    // TODO: Explain how to bypass the error
+                );
+            }
         }
-        else {
-            this.logger.info("Running inline action.");
+    }
+    
+    /**
+     * @returns A stack containing actions that must be run
+     * successively after this one.
+     * NOTE: Actions are executed from last to first.
+     */
+    async runThisAction(): Promise<(ZbsConfigAction | string)[]> {
+        if(this.failed || this.malformed) {
+            this.logger.trace("Aborting action: Failed before running.");
+            return [];
         }
-        this.logger.trace("Action config:", this.action);
-        this.logger.trace("System config:", this.system);
+        this.logger.info("Running action:",
+            this.action.name || "(Inline action)"
+        );
+        this.logger.trace("Action config:");
+        this.logger.trace(() => zbsValueToString(this.action, "  "));
+        this.logger.trace("Action's system config:");
+        this.logger.trace(() => zbsValueToString(this.system, "  "));
         // Check for cycles/loops
         if(this.actionHistory.indexOf(this.action) >= 0) {
             if(this.project.config.allowActionCycles) {
@@ -378,26 +436,39 @@ export class ZbsProjectActionRunner {
             }
             else {
                 this.logger.error("Encountered cyclic action.");
+                this.logger.info(
+                    "Cyclic actions are probably an indicator of a " +
+                    "mistake in the project config! However, if you're " +
+                    "sure that this is what you want, then you can " +
+                    "disable this error using the allowActionCycles " +
+                    "setting. This setting can be enabled by, for example, " +
+                    "passing the --allow-action-cycles flag to Zebes on " +
+                    "the command line."
+                );
                 this.failed = true;
-                return;
+                return [];
             }
         }
         this.actionHistory.push(this.action);
         // Run this action
-        await this.runAction();
-        // Run nextActions, when applicable
-        if(this.action.nextAction && !this.failed) {
-            await this.runNextAction(this.action.nextAction);
+        await this.runDispatchType();
+        // Determine next actions
+        const nextActions: (ZbsConfigAction | string)[] = [];
+        if((<any> this.action).nextActionFinal) {
+            nextActions.push((<any> this.action).nextActionFinal);
+        }
+        if((<any> this.action).nextAction && !this.failed) {
+            nextActions.push((<any> this.action).nextAction);
         }
         if((<any> this.action).nextActionFailure && this.failed) {
-            await this.runNextAction((<any> this.action).nextActionFailure);
+            nextActions.push((<any> this.action).nextActionFailure);
         }
-        if((<any> this.action).nextActionFinal) {
-            await this.runNextAction((<any> this.action).nextActionFinal);
-        }
+        return nextActions;
     }
     
-    runNextAction(action: ZbsConfigActionInline | string) {
+    runNextAction(
+        action: ZbsConfigAction | string
+    ): Promise<(ZbsConfigAction | string)[]> {
         const actionConfig = this.project.getAction(action);
         if(!actionConfig) {
             throw new ZbsError(`No such action: ${action}`);
@@ -408,10 +479,10 @@ export class ZbsProjectActionRunner {
             actionConfig,
             this.actionHistory.slice(),
         );
-        return actionRunner.run();
+        return actionRunner.runThisAction();
     }
     
-    runAction() {
+    runDispatchType() {
         if(this.action.type === "shell") {
             return this.runShell();
         }
