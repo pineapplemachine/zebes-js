@@ -1,0 +1,8 @@
+# Set all files to have LF line endings
+* text eol=lf
+*.png binary
+*.flac binary
+*.m4a binary
+*.wav binary
+*.ogg binary
+*.ttf binary

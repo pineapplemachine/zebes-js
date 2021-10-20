@@ -102,3 +102,11 @@ dist
 
 # TernJS port file
 .tern-port
+
+# Specific to Zebes
+dist/**
+test/materials/**/build/**
+test/materials/**/bin/**
+test/materials/**/zebes.json
+test/materials/**/zebes.yaml
+test/materials/**/zebes.toml
