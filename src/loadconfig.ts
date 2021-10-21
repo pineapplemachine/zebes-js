@@ -17,7 +17,7 @@ export const ZbsProjectConfigFileNames: {[name: string]: string} = {
 };
 
 export function zbsFindProjectConfigPath(cwd?: string): string {
-    const searchPath = cwd || process.cwd();
+    let searchPath = cwd || process.cwd();
     while(true) {
         for(const name in ZbsProjectConfigFileNames) {
             const tryConfigPath = path.join(searchPath, name);
@@ -29,6 +29,7 @@ export function zbsFindProjectConfigPath(cwd?: string): string {
         if(!nextPath || nextPath === searchPath) {
             break;
         }
+        searchPath = nextPath;
     }
     return "";
 }
