@@ -4,8 +4,8 @@ export function zbsProcessExec(
     command: string,
     options: any,
     callbacks?: {
-        stdout?: (data: string) => any
-        stderr?: (data: string) => any
+        stdout?: (data: Buffer) => any
+        stderr?: (data: Buffer) => any
     }
 ): Promise<number> {
     return new Promise((resolve, reject) => {
@@ -25,8 +25,8 @@ export function zbsProcessSpawn(
     args: string[],
     options: any,
     callbacks?: {
-        stdout?: (data: string) => any
-        stderr?: (data: string) => any
+        stdout?: (data: Buffer) => any
+        stderr?: (data: Buffer) => any
     }
 ): Promise<number> {
     return new Promise((resolve, reject) => {
@@ -39,4 +39,20 @@ export function zbsProcessSpawn(
         }
         child.on("close", resolve);
     });
+}
+
+export async function zbsProcessSpawnDump(
+    command: string, args: string[], options: any
+): Promise<{statusCode: number, stdout: string, stderr: string}> {
+    const stdoutData: string[] = [];
+    const stderrData: string[] = [];
+    const statusCode = await zbsProcessSpawn(command, args, options, {
+        stdout: (data) => stdoutData.push(data.toString()),
+        stderr: (data) => stderrData.push(data.toString()),
+    });
+    return {
+        statusCode: statusCode,
+        stdout: stdoutData.join(""),
+        stderr: stderrData.join(""),
+    };
 }

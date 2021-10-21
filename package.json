@@ -52,6 +52,8 @@
     "@iarna/toml": "^2.2.5",
     "argparse": "^2.0.1",
     "fast-glob": "^3.2.7",
+    "fs-extra": "^10.0.0",
+    "json5": "^2.2.0",
     "micromatch": "^4.0.4",
     "yaml": "^1.10.2"
   }

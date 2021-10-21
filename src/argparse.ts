@@ -131,4 +131,8 @@ function zbsArgParserAddRunTargetArgs(parser: ArgumentParser) {
         action: "store_true",
         help: "Show what actions would be taken, without modifying anything.",
     });
+    parser.add_argument("--strict-config-format", {
+        action: "store_true",
+        help: "Use a more strict parser for project config files, when available.",
+    });
 }

@@ -31,6 +31,7 @@ action type: fetch
 action type: inflate
 action type: rename
 action type: copy
+action type: parallel
 action filters (e.g. based on platform)
 action messages (log, warn, error on success and/or failure)
 actions run iteratively, not recursively DONE
@@ -97,9 +98,14 @@ function zbsGetProjectNumber(
     }
 }
 
-export async function zbsMain() {
+export async function zbsCliMain(
+    argv?: string[], cwd?: string
+): Promise<number> {
     const argParser = zbsGetArgParser();
-    const args = argParser.parse_args();
+    const args = argParser.parse_args(
+        (argv || process.argv).slice(2)
+    );
+    const mainCwd = cwd || process.cwd();
     const logLevel: number = (
         args.silent ? Infinity :
         args.very_verbose ? ZbsLogLevel.Trace :
@@ -108,35 +114,39 @@ export async function zbsMain() {
     );
     const logger = new ZbsLogger(logLevel);
     if(args.command === "init") {
-        const status = zbsInit(logger, args);
-        process.exit(status);
+        const status = zbsCliInit(logger, args, mainCwd);
+        return status;
     }
     else if(args.command === "info") {
-        const status = zbsInfo(logger, args);
-        process.exit(status);
+        const status = zbsCliInfo(logger, args, mainCwd);
+        return status;
     }
     else if(args.command === "run") {
-        const status = await zbsRun(logger, args);
-        process.exit(status);
+        const status = await zbsCliRun(logger, args, mainCwd);
+        return status;
     }
     else if(!args.command) {
         argParser.print_help();
-        process.exit(0);
+        return 0;
     }
     else {
-        const status = await zbsRun(logger, args, args.command);
-        process.exit(status);
+        const status = await zbsCliRun(
+            logger, args, mainCwd, args.command
+        );
+        return status;
     }
 }
 
-export function zbsInit(logger: ZbsLogger, args: any): number {
+export function zbsCliInit(
+    logger: ZbsLogger, args: any, cwd: string
+): number {
     const template = zbsInitProjectTemplates[args.template];
     if(!template) {
         logger.error(`Failed to load project template: "${args.template}"`);
         return 1;
     }
     for(const key in ZbsProjectConfigFileNames) {
-        if(fs.existsSync(key)) {
+        if(fs.existsSync(path.join(cwd, key))) {
             logger.error(
                 "A Zebes project file already exists in this directory:",
                 key
@@ -146,21 +156,21 @@ export function zbsInit(logger: ZbsLogger, args: any): number {
     }
     if(args.format === "json") {
         logger.info("Writing JSON project config file: zebes.json");
-        fs.writeFileSync("zebes.json", JSON.stringify(
-            template, undefined, 4
-        ));
+        fs.writeFileSync(path.join(cwd, "zebes.json"),
+            JSON.stringify(template, undefined, 4)
+        );
     }
     else if(args.format === "toml") {
         logger.info("Writing TOML project config file: zebes.toml");
-        fs.writeFileSync("zebes.toml", toml.stringify(
-            template
-        ));
+        fs.writeFileSync(path.join(cwd, "zebes.toml"),
+            toml.stringify(template)
+        );
     }
     else if(args.format === "yaml") {
         logger.info("Writing YAML project config file: zebes.yaml");
-        fs.writeFileSync("zebes.yaml", yaml.stringify(
-            template
-        ));
+        fs.writeFileSync(path.join(cwd, "zebes.yaml"),
+            yaml.stringify(template)
+        );
     }
     else {
         logger.error(`Unknown project file format "${args.format}".`);
@@ -170,13 +180,16 @@ export function zbsInit(logger: ZbsLogger, args: any): number {
 }
 
 function zbsGetProjectConfig(
-    logger: ZbsLogger, argsProject?: string | undefined
+    logger: ZbsLogger,
+    cwd: string,
+    argsProject: string | undefined,
+    strictFormat: boolean,
 ) {
     // Find the project file
     logger.trace("Searching for a project config file.");
     const configPath: string = (argsProject ?
-        path.resolve(process.cwd(), argsProject) :
-        zbsFindProjectConfigPath()
+        path.resolve(cwd, argsProject) :
+        zbsFindProjectConfigPath(cwd)
     );
     // Handle the case where none was found
     if(!configPath) {
@@ -185,19 +198,28 @@ function zbsGetProjectConfig(
     }
     // Read the project file
     logger.info("Reading project config from path:", configPath);
-    const loadConfig = zbsLoadProjectConfig(configPath);
+    // TODO: Give more helpful error messages when parsing fails
+    const loadConfig = zbsLoadProjectConfig(
+        configPath, strictFormat
+    );
     // Report errors in the project file
     if(loadConfig.errors.length) {
         logger.error("Failed to validate project config file.");
     }
     if(loadConfig.warnings.length) {
-        logger.warn(`Found ${loadConfig.warnings.length} validation warnings:`);
+        logger.warn(
+            `Found ${loadConfig.warnings.length} project config ` +
+            `validation warnings.`
+        );
         for(const warn of loadConfig.warnings) {
             logger.warn(warn);
         }
     }
     if(loadConfig.errors.length) {
-        logger.error(`Found ${loadConfig.errors.length} validation failures:`);
+        logger.error(
+            `Found ${loadConfig.errors.length} project config ` +
+            `validation failures.`
+        );
         for(const error of loadConfig.errors) {
             logger.error(error);
         }
@@ -206,8 +228,16 @@ function zbsGetProjectConfig(
     return loadConfig;
 }
 
-export function zbsInfo(logger: ZbsLogger, args: any): number {
-    const loadConfig = zbsGetProjectConfig(logger, args.project);
+export function zbsCliInfo(
+    logger: ZbsLogger, args: any, cwd: string
+): number {
+    const strictConfigFormat = !!zbsGetProjectBoolean(
+        logger, "strict config formats", args.strict_config_format,
+        "ZEBES_PROJECT_STRICT_CONFIG_FORMAT",
+    );
+    const loadConfig = zbsGetProjectConfig(
+        logger, cwd, args.project, strictConfigFormat
+    );
     if(loadConfig && loadConfig.project) {
         logger.info("Project config:");
         logger.info(zbsValueToString(loadConfig.project, "  "));
@@ -215,11 +245,17 @@ export function zbsInfo(logger: ZbsLogger, args: any): number {
     return (loadConfig && loadConfig.errors.length) ? 1 : 0;
 }
 
-export async function zbsRun(
-    logger: ZbsLogger, args: any, command?: string
+export async function zbsCliRun(
+    logger: ZbsLogger, args: any, cwd: string, command?: string
 ): Promise<number> {
     // Get project configuration
-    const loadConfig = zbsGetProjectConfig(logger, args.project);
+    const strictConfigFormat = !!zbsGetProjectBoolean(
+        logger, "strict config formats", args.strict_config_format,
+        "ZEBES_PROJECT_STRICT_CONFIG_FORMAT",
+    );
+    const loadConfig = zbsGetProjectConfig(
+        logger, cwd, args.project, strictConfigFormat
+    );
     if(!loadConfig || !loadConfig.project) {
         return 1;
     }

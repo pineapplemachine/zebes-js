@@ -4,10 +4,10 @@
 import * as sourceMapSupport from "source-map-support";
 sourceMapSupport.install();
 
-import {zbsMain} from "./cli";
+import {zbsCliMain} from "./cli";
 
-zbsMain().then(() => {
-    process.exit(0);
+zbsCliMain().then((statusCode) => {
+    process.exit(statusCode);
 }).catch((error: any) => {
     if(error) {
         console.log(error);

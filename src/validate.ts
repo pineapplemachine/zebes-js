@@ -28,9 +28,11 @@ export function zbsValidateExactString(expect: string) {
 }
 
 /**
- * Coerce the given value to a boolean.
+ * Coerce the given value to either a boolean or undefined.
  */
-export function zbsValidateBoolean(value: any, context: ZbsValidateContext): boolean | undefined {
+export function zbsValidateBoolean(
+    value: any, context: ZbsValidateContext
+): boolean | undefined {
     if(value === null || value === undefined) {
         return undefined;
     }
@@ -377,6 +379,7 @@ export function zbsValidateActionInline(
         return <ZbsConfigActionRemove> zbsValidateObject({
             type: zbsValidateExactString("remove"),
             nextAction: zbsValidateActionStringOrInline,
+            system: zbsValidateString,
             cwd: zbsValidateString,
             removePaths: zbsValidateRequiredStringList,
         })(value, context);
@@ -402,7 +405,7 @@ export function zbsValidateActionInline(
         })(value, context);
     }
     else if(value.type === "link") {
-        return <ZbsConfigActionLink> zbsValidateObject({
+        const action = <ZbsConfigActionLink> zbsValidateObject({
             type: zbsValidateExactString("link"),
             nextAction: zbsValidateActionStringOrInline,
             nextActionFailure: zbsValidateActionStringOrInline,
@@ -416,8 +419,16 @@ export function zbsValidateActionInline(
             libraryPaths: zbsValidateStringList,
             libraries: zbsValidateStringList,
             objectPaths: zbsValidateStringList,
-            outputPath: zbsValidateRequiredString,
+            outputPath: zbsValidateString,
+            outputBinaryName: zbsValidateString,
         })(value, context);
+        if(!action.outputPath && !action.outputBinaryName) {
+            context.errors.push(
+                `At ${context.path}.type: Link action must ` +
+                `specify either an outputPath or an outputBinaryName.`
+            );
+        }
+        return action;
     }
     else {
         context.errors.push(

@@ -28,7 +28,7 @@ export const zbsInitProjectTemplateC = {
                 {
                     "type": "link",
                     "objectPaths": ["build/**/*.o"],
-                    "outputPath": "bin/main.exe"
+                    "outputBinaryName": "bin/main"
                 }
             ]
         },
@@ -69,7 +69,7 @@ export const zbsInitProjectTemplateCpp = {
                 {
                     "type": "link",
                     "objectPaths": ["build/**/*.o"],
-                    "outputPath": "bin/main.exe"
+                    "outputBinaryName": "bin/main"
                 }
             ]
         },
@@ -109,7 +109,7 @@ export const zbsInitProjectTemplateD = {
                 {
                     "type": "link",
                     "objectPaths": ["build/**/*.o"],
-                    "outputPath": "bin/main.exe"
+                    "outputBinaryName": "bin/main"
                 }
             ]
         },

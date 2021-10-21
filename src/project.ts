@@ -93,6 +93,27 @@ export class ZbsConfigHelper {
             return fallback;
         }
     }
+    
+    getPath(key: string, basePath: string): string {
+        const project = <any> this.project;
+        const system = <any> this.system;
+        const target = <any> this.target;
+        const action = <any> this.action;
+        let result: string = basePath;
+        if(project && project[key]) {
+            basePath = path.resolve(result, String(project[key]));
+        }
+        if(target && target[key]) {
+            basePath = path.resolve(result, String(target[key]));
+        }
+        if(system && system[key]) {
+            basePath = path.resolve(result, String(system[key]));
+        }
+        if(action && action[key]) {
+            basePath = path.resolve(result, String(action[key]));
+        }
+        return result;
+    }
 
     getListAdditive<T>(key: string): T[] {
         const list: T[] = [];
@@ -238,8 +259,9 @@ export class ZbsProjectTargetRunner {
     
     async run() {
         this.logger.info("Running target:", this.target.name);
-        this.logger.trace("Target config:");
-        this.logger.trace(() => zbsValueToString(this.target, "  "));
+        this.logger.trace("Target config:\n",
+            () => zbsValueToString(this.target, "  ")
+        );
         if(!this.target.actions || !this.target.actions.length) {
             this.logger.warn(
                 `Target "${this.target.name}" has no actions to run.`
@@ -308,19 +330,13 @@ export class ZbsProjectActionRunner {
         this.system = project.getSystem(system);
         this.logger.trace("Action identifies system with name:", system);
         if(system && !this.system) {
-            this.logger.error(`Unknown system "${system}".`);
-            this.failed = true;
-            this.malformed = true;
+            this.fail(`Unknown system "${system}".`, true);
         }
         else if(!this.system && this.action.type === "compile") {
-            this.logger.error("Compile action must have an associated system.");
-            this.failed = true;
-            this.malformed = true;
+            this.fail("Compile action must have an associated system.", true);
         }
         else if(!this.system && this.action.type === "link") {
-            this.logger.error("Link action must have an associated system.");
-            this.failed = true;
-            this.malformed = true;
+            this.fail("Link action must have an associated system.", true);
         }
         this.configHelper.system = this.system;
     }
@@ -329,12 +345,12 @@ export class ZbsProjectActionRunner {
         return this.configHelper.get<T>(key, fallback);
     }
     
-    getCwd<T>(): string {
-        const cwd: string = this.getConfig("cwd") || "";
-        return (cwd ?
-            path.resolve(this.project.path, cwd) :
-            this.project.path
-        );
+    getConfigPath(key: string, basePath: string): string {
+        return this.configHelper.getPath(key, basePath);
+    }
+    
+    getConfigCwd(): string {
+        return this.getConfigPath("cwd", this.project.path);
     }
     
     getConfigListAdditive<T>(key: string): T[] {
@@ -371,6 +387,35 @@ export class ZbsProjectActionRunner {
     
     getLinkOutputArg(): string {
         return (this.system && this.system.linkOutputArg) || "-o";
+    }
+    
+    getLinkOutputPath(action: ZbsConfigActionLink): string {
+        if(action.outputPath) {
+            return action.outputPath;
+        }
+        else if(!action.outputBinaryName) {
+            return "";
+        }
+        else if(process.platform === "win32") {
+            return (action.outputBinaryName.endsWith(".exe") ?
+                action.outputBinaryName :
+                action.outputBinaryName + ".exe"
+            );
+        }
+        else {
+            return (action.outputBinaryName.endsWith(".exe") ?
+                action.outputBinaryName.slice(0, action.outputBinaryName.length - 4) :
+                action.outputBinaryName
+            );
+        }
+    }
+    
+    fail(message: string, malformed?: boolean): void {
+        this.logger.error(message);
+        this.failed = true;
+        if(malformed) {
+            this.malformed = true;
+        }
     }
     
     async run() {
@@ -425,17 +470,19 @@ export class ZbsProjectActionRunner {
         this.logger.info("Running action:",
             this.action.name || "(Inline action)"
         );
-        this.logger.trace("Action config:");
-        this.logger.trace(() => zbsValueToString(this.action, "  "));
-        this.logger.trace("Action's system config:");
-        this.logger.trace(() => zbsValueToString(this.system, "  "));
+        this.logger.trace("Action config:\n",
+            () => zbsValueToString(this.action, "  ")
+        );
+        this.logger.trace("Action's system config:\n",
+            () => zbsValueToString(this.system, "  ")
+        );
         // Check for cycles/loops
         if(this.actionHistory.indexOf(this.action) >= 0) {
             if(this.project.config.allowActionCycles) {
                 this.logger.warn("Encountered cyclic action. (Ignoring.)");
             }
             else {
-                this.logger.error("Encountered cyclic action.");
+                this.fail("Encountered cyclic action.");
                 this.logger.info(
                     "Cyclic actions are probably an indicator of a " +
                     "mistake in the project config! However, if you're " +
@@ -445,7 +492,6 @@ export class ZbsProjectActionRunner {
                     "passing the --allow-action-cycles flag to Zebes on " +
                     "the command line."
                 );
-                this.failed = true;
                 return [];
             }
         }
@@ -511,7 +557,7 @@ export class ZbsProjectActionRunner {
         if(!zbsIsActionShell(this.action)) {
             throw new Error("Internal error: Action type inconsistency.");
         }
-        const cwd = this.getCwd();
+        const cwd = this.getConfigCwd();
         const env = this.getConfigObjectAdditive<string>("env");
         for(const command of this.action.commands) {
             if(!command) {
@@ -531,9 +577,7 @@ export class ZbsProjectActionRunner {
                 stderr: (data) => this.logger.info(data.toString()),
             });
             if(statusCode !== 0) {
-                this.logger.info(`Command failed: Status code ${statusCode}`);
-                this.failed = true;
-                break;
+                this.fail(`Command failed: Status code ${statusCode}`);
             }
         }
     }
@@ -543,7 +587,7 @@ export class ZbsProjectActionRunner {
         if(!zbsIsActionRemove(this.action)) {
             throw new Error("Internal error: Action type inconsistency.");
         }
-        const cwd = this.getCwd();
+        const cwd = this.getConfigCwd();
         const removePaths = await glob(this.action.removePaths, {
             cwd: cwd,
             suppressErrors: true,
@@ -594,16 +638,16 @@ export class ZbsProjectActionRunner {
         if(!zbsIsActionCompile(this.action)) {
             throw new Error("Internal error: Action type inconsistency.");
         }
-        const cwd = this.getCwd();
+        const cwd = this.getConfigCwd();
         const env = this.getConfigObjectAdditive<string>("env");
         const incremental = !!this.getConfig<boolean>("incremental");
         const compiler = this.getConfig<string>("compiler") || "";
         const compileArgs = this.getConfigListAdditive<string>("compileArgs");
         const includePaths = this.getConfigListAdditive<string>("includePaths");
         if(!compiler) {
-            this.logger.error("No compiler has been specified.");
-            this.failed = true;
-            return;
+            return this.fail(
+                "Compile action failed: No compiler has been specified."
+            );
         }
         else {
             this.logger.trace("Using linker:", compiler);
@@ -617,7 +661,7 @@ export class ZbsProjectActionRunner {
             this.action.outputPath, "zebes.deps.json.gzip"
         );
         const dependencies = new ZbsDependencyMap(
-            this.getCwd(), this.logger
+            this.getConfigCwd(), this.logger
         );
         if(incremental) {
             // Attempt to load dependencies information from a prior run
@@ -695,7 +739,7 @@ export class ZbsProjectActionRunner {
                 this.getCompileOutputArg(),
                 objectPath,
             ];
-            this.logger.info("Building:", buildPath);
+            this.logger.info("Compiling source:", buildPath);
             if(this.project.dryRun) {
                 this.logger.info("Dry-run: $", compiler, ...args);
             }
@@ -713,11 +757,10 @@ export class ZbsProjectActionRunner {
                     stderr: (data) => this.logger.info(data.toString()),
                 });
                 if(statusCode !== 0) {
-                    this.logger.error(
-                        `Compilation failed with status code ${statusCode}:`,
+                    this.fail(
+                        `Compilation failed with status code ${statusCode}: ` +
                         buildPath
                     );
-                    this.failed = true;
                 }
             }
             if(incremental) {
@@ -751,28 +794,35 @@ export class ZbsProjectActionRunner {
         if(!zbsIsActionLink(this.action)) {
             throw new Error("Internal error: Action type inconsistency.");
         }
-        const cwd = this.getCwd();
+        const cwd = this.getConfigCwd();
         const env = this.getConfigObjectAdditive<string>("env");
         const compiler = this.getConfig<string>("compiler") || "";
         const linker = this.getConfig<string>("linker") || compiler;
         const linkArgs = this.getConfigListAdditive<string>("linkArgs");
         const libraryPaths = this.getConfigListAdditive<string>("libraryPaths");
         const libraries = this.getConfigListAdditive<string>("libraries");
+        const outputPath = this.getLinkOutputPath(this.action);
         if(!linker) {
-            this.logger.error("No linker has been specified.");
-            this.failed = true;
-            return;
+            return this.fail(
+                "Link action failed: No linker has been specified."
+            );
         }
         else {
             this.logger.trace("Using linker:", linker);
+        }
+        if(!outputPath) {
+            return this.fail(
+                "Link action failed: No output path has been specified."
+            );
         }
         const objectPaths = await glob(this.action.objectPaths || [], {
             cwd: cwd,
             suppressErrors: true,
         });
         if(!objectPaths.length) {
-            this.logger.error("No object files were found.");
-            return 1;
+            return this.fail(
+                "Link action failed: No object files were found."
+            );
         }
         const args: string[] = [];
         args.push(...objectPaths);
@@ -783,11 +833,11 @@ export class ZbsProjectActionRunner {
             (path) => (this.getLibraryArg() + path)
         ));
         args.push(...linkArgs);
-        args.push(this.getLinkOutputArg(), this.action.outputPath);
-        fs.mkdirSync(path.dirname(path.resolve(cwd, this.action.outputPath)), {
+        args.push(this.getLinkOutputArg(), outputPath);
+        fs.mkdirSync(path.dirname(path.resolve(cwd, outputPath)), {
             recursive: true,
         });
-        this.logger.info("Linking:", this.action.outputPath);
+        this.logger.info("Linking:", outputPath);
         if(this.project.dryRun) {
             this.logger.info("Dry-run: $", linker, ...args);
             return;
@@ -802,8 +852,7 @@ export class ZbsProjectActionRunner {
             stderr: (data) => this.logger.info(data.toString()),
         });
         if(statusCode !== 0) {
-            this.logger.error("Linking failed with status code", statusCode);
-            this.failed = true;
+            this.fail(`Linking failed with status code ${statusCode}`);
         }
     }
 }

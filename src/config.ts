@@ -1,8 +1,8 @@
 export interface ZbsConfigProject {
+    system?: string;
     env?: {[name: string]: string};
     cwd?: string;
     incremental?: boolean;
-    system?: string;
     allowActionCycles?: boolean;
     systems?: ZbsConfigSystem[];
     actions?: ZbsConfigAction[];
@@ -34,11 +34,11 @@ export interface ZbsConfigSystem {
 export interface ZbsConfigActionShell {
     type: "shell";
     name?: string;
+    system?: string;
     nextAction?: ZbsConfigAction | string;
     nextActionFailure?: ZbsConfigAction | string;
     nextActionFinal?: ZbsConfigAction | string;
     ignoreFailure?: boolean;
-    system?: string;
     env?: {[name: string]: string};
     cwd?: string;
     commands: string[];
@@ -47,6 +47,7 @@ export interface ZbsConfigActionShell {
 export interface ZbsConfigActionRemove {
     type: "remove";
     name?: string;
+    system?: string;
     nextAction?: ZbsConfigAction | string;
     cwd?: string;
     removePaths: string[];
@@ -55,11 +56,11 @@ export interface ZbsConfigActionRemove {
 export interface ZbsConfigActionCompile {
     type: "compile";
     name?: string;
+    system?: string;
     nextAction?: ZbsConfigAction | string;
     nextActionFailure?: ZbsConfigAction | string;
     nextActionFinal?: ZbsConfigAction | string;
     ignoreFailure?: boolean;
-    system?: string;
     env?: {[name: string]: string};
     cwd?: string;
     incremental?: boolean;
@@ -75,11 +76,11 @@ export interface ZbsConfigActionCompile {
 export interface ZbsConfigActionLink {
     type: "link";
     name?: string;
+    system?: string;
     nextAction?: ZbsConfigAction | string;
     nextActionFailure?: ZbsConfigAction | string;
     nextActionFinal?: ZbsConfigAction | string;
     ignoreFailure?: boolean;
-    system?: string;
     env?: {[name: string]: string};
     cwd?: string;
     linker?: string;
@@ -87,7 +88,8 @@ export interface ZbsConfigActionLink {
     libraryPaths?: string[];
     libraries?: string[];
     objectPaths?: string[];
-    outputPath: string;
+    outputPath?: string;
+    outputBinaryName?: string;
 }
 
 export type ZbsConfigAction = (
@@ -106,10 +108,10 @@ export type ZbsConfigActionType = (
 
 export interface ZbsConfigTarget {
     name: string;
+    system?: string;
     env?: {[name: string]: string};
     cwd?: string;
     incremental?: boolean;
-    system?: string;
     compiler?: string;
     compileArgs?: string[];
     includePaths?: string[];
