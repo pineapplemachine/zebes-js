@@ -41,7 +41,7 @@ function getPlatformBinaryName(name: string): string {
     return process.platform === "win32" ? name + ".exe" : name;
 }
 
-canary.test(`Build trivial C program "hello"`, async function() {
+canary.test(`c/hello - Build trivial C program`, async function() {
     const helloDir = cloneMaterials("c/hello");
     await zebes(helloDir, ["init", "c", "toml"]);
     assert(fs.existsSync(path.join(helloDir, "zebes.toml")));
@@ -56,7 +56,7 @@ canary.test(`Build trivial C program "hello"`, async function() {
     assert(result.stdout.startsWith("Hello, world!"));
 });
 
-canary.test(`Build multi source C program "bottles"`, async function() {
+canary.test(`c/bottles - Build multi source C program`, async function() {
     const helloDir = cloneMaterials("c/bottles");
     await zebes(helloDir, ["init", "c", "toml"]);
     assert(fs.existsSync(path.join(helloDir, "zebes.toml")));
@@ -71,10 +71,25 @@ canary.test(`Build multi source C program "bottles"`, async function() {
     assert(result.stdout.indexOf("no more bottles of beer on the wall") > 0);
 });
 
-canary.test(`Build trivial C++ program "hello"`, async function() {
+canary.test(`cpp/hello - Build trivial C++ program`, async function() {
     const helloDir = cloneMaterials("cpp/hello");
     await zebes(helloDir, ["init", "cpp", "yaml"]);
     assert(fs.existsSync(path.join(helloDir, "zebes.yaml")));
+    await zebes(helloDir, ["build"]);
+    const binaryName = getPlatformBinaryName("main");
+    assert(fs.existsSync(path.join(helloDir, "bin", binaryName)));
+    const result = await spawn(binaryName, [], {
+        cwd: path.join(helloDir, "bin"),
+    });
+    console.log(result);
+    assert(result.statusCode === 0);
+    assert(result.stdout.startsWith("Hello, world!"));
+});
+
+canary.test(`d/hello - Build trivial D program`, async function() {
+    const helloDir = cloneMaterials("d/hello");
+    await zebes(helloDir, ["init", "d", "toml"]);
+    assert(fs.existsSync(path.join(helloDir, "zebes.toml")));
     await zebes(helloDir, ["build"]);
     const binaryName = getPlatformBinaryName("main");
     assert(fs.existsSync(path.join(helloDir, "bin", binaryName)));

@@ -91,9 +91,14 @@ export const zbsInitProjectTemplateD = {
             "name": "d",
             "compiler": "dmd",
             "compileArgs": ["-c"],
-            "includePaths": ["include"],
-            "libraryPaths": ["lib"],
-            "libraries": []
+            "includePaths": [],
+            "libraryPaths": [],
+            "libraries": [],
+            "compileOutputExt": ".obj",
+            "compileOutputArg": "-of",
+            "linkOutputArg": "-of",
+            "libraryPathArg": "-L-L",
+            "libraryArg": "-L-l"
         }
     ],
     "targets": [
@@ -103,12 +108,13 @@ export const zbsInitProjectTemplateD = {
             "actions": [
                 {
                     "type": "compile",
+                    "includePaths": ["src"],
                     "sourcePaths": ["src/**/*.d"],
                     "outputPath": "build"
                 },
                 {
                     "type": "link",
-                    "objectPaths": ["build/**/*.o"],
+                    "objectPaths": ["build/**/*.obj"],
                     "outputBinaryName": "bin/main"
                 }
             ]

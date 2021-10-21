@@ -597,38 +597,43 @@ export class ZbsProjectActionRunner {
             if(!removePath) {
                 continue;
             }
-            const stat = fs.statSync(removePath, {
+            const resolvedRemovePath = path.resolve(cwd, removePath);
+            const stat = fs.statSync(resolvedRemovePath, {
                 throwIfNoEntry: false,
             });
             if(!stat) {
                 this.logger.debug(
-                    "Not removing path (doesn't exist):", removePath
+                    "Not removing path (doesn't exist):",
+                    resolvedRemovePath
                 );
                 continue;
             }
             const removeName = stat.isDirectory() ? "directory" : "file";
             if(this.project.dryRun) {
-                this.logger.info(`Dry-run: Removing ${removeName}:`, removePath);
+                this.logger.info(
+                    `Dry-run: Removing ${removeName}:`,
+                    resolvedRemovePath
+                );
                 continue;
             }
             const removeOk = this.project.promptYes || (
                 await this.project.prompt.confirm(
-                    `Remove ${removeName} ${removePath} ?`, false
+                    `Remove ${removeName} ${resolvedRemovePath} ?`, false
                 )
             );
             if(removeOk) {
-                this.logger.info(`Removing ${removeName}:`, removePath);
+                this.logger.info(`Removing ${removeName}:`, resolvedRemovePath);
                 if(stat.isDirectory()) {
-                    fs.rmdirSync(removePath, {
+                    fs.rmdirSync(resolvedRemovePath, {
                         recursive: true,
                     });
                 }
                 else {
-                    fs.unlinkSync(removePath);
+                    fs.unlinkSync(resolvedRemovePath);
                 }
             }
             else {
-                this.logger.info(`Not removing ${removeName}:`, removePath);
+                this.logger.info(`Not removing ${removeName}:`, resolvedRemovePath);
             }
         }
     }
@@ -736,8 +741,7 @@ export class ZbsProjectActionRunner {
             baseArgs.push(...compileArgs);
             const args = [
                 ...baseArgs,
-                this.getCompileOutputArg(),
-                objectPath,
+                this.getCompileOutputArg() + objectPath,
             ];
             this.logger.info("Compiling source:", buildPath);
             if(this.project.dryRun) {
@@ -833,7 +837,7 @@ export class ZbsProjectActionRunner {
             (path) => (this.getLibraryArg() + path)
         ));
         args.push(...linkArgs);
-        args.push(this.getLinkOutputArg(), outputPath);
+        args.push(this.getLinkOutputArg() + outputPath);
         fs.mkdirSync(path.dirname(path.resolve(cwd, outputPath)), {
             recursive: true,
         });
