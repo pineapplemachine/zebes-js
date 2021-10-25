@@ -305,6 +305,8 @@ export function zbsValidateSystem(
         compileOutputArg: zbsValidateString,
         compileOutputExt: zbsValidateString,
         includeSourcePatterns: zbsValidateStringList,
+        importSourcePatterns: zbsValidateStringList,
+        importSourceExt: zbsValidateStringList,
         linker: zbsValidateString,
         linkArgs: zbsValidateStringList,
         libraryPaths: zbsValidateStringList,

@@ -22,6 +22,8 @@ export interface ZbsConfigSystem {
     compileOutputExt?: string;
     compileMakeRuleArg?: string;
     includeSourcePatterns?: string[];
+    importSourcePatterns?: string[];
+    importSourceExt?: string[];
     linker?: string;
     linkArgs?: string[];
     libraryPaths?: string[];

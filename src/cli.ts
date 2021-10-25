@@ -21,25 +21,29 @@ import {zbsValueToString} from "./tostring";
 TODO: add some things
 fix incremental builds
 make d work
-zebes info: print out project config data
---dry-run DONE
-validate: warn unknown keys
-config tostring functions DONE
-improve action interfaces DONE
 action type: branch
 action type: fetch
 action type: inflate
 action type: rename
 action type: copy
+DMD -makedeps
+DMD -J and ImportExpressions
+external dependency cache
 action type: parallel
 action filters (e.g. based on platform)
 action messages (log, warn, error on success and/or failure)
-actions run iteratively, not recursively DONE
 track objects for compile actions, refer to them in link actions
 local config edits ?
-allow json comments, trailing commas etc (+flag to disable)
 custom templates directory
-fix undefined config list values always parsing as empty list
+
+zebes info: print out project config data DONE
+--dry-run DONE
+validate: warn unknown keys DONE
+config tostring functions DONE
+improve action interfaces DONE
+actions run iteratively, not recursively DONE
+allow json comments, trailing commas etc (+flag to disable) DONE
+fix undefined config list values always parsing as empty list DONE
 
 GOAL:
 configure to work with raylib-cpp

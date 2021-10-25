@@ -13,8 +13,9 @@ import {ZbsConfigActionRemove} from "./config";
 import {ZbsConfigActionCompile} from "./config";
 import {ZbsConfigActionLink} from "./config";
 import {ZbsConfigTarget} from "./config";
-import {ZbsDependencyMap} from "./dependencies";
 import {ZbsError} from "./error";
+import {ZbsDependencyMap} from "./incremental";
+import {ZbsFilesModified} from "./incremental";
 import {ZbsLogger} from "./logger";
 import {zbsProcessExec} from "./process";
 import {zbsProcessSpawn} from "./process";
@@ -381,10 +382,6 @@ export class ZbsProjectActionRunner {
         return (this.system && this.system.compileOutputExt) || ".o";
     }
     
-    getCompileMakeRuleArg(): string {
-        return (this.system && this.system.compileMakeRuleArg) || "-MM";
-    }
-    
     getLinkOutputArg(): string {
         return (this.system && this.system.linkOutputArg) || "-o";
     }
@@ -638,6 +635,50 @@ export class ZbsProjectActionRunner {
         }
     }
     
+    checkRebuildNeeded(
+        dependencies: ZbsDependencyMap,
+        filesModified: ZbsFilesModified,
+        sourcePath: string,
+        objectPath: string,
+    ): boolean {
+        // Compare source modified time against object modified time
+        const sourceModified = filesModified.getModifiedTime(sourcePath);
+        const objectModified = filesModified.getModifiedTime(objectPath);
+        if(!sourceModified || !objectModified ||
+            sourceModified >= objectModified
+        ) {
+            this.logger.debug(
+                "Incremental: Compilation needed because " +
+                "the source file has been updated:", sourcePath
+            );
+            return true;
+        }
+        // Compare object modified time against dependency updated times
+        const dependencyPaths = dependencies.getDependencies(sourcePath);
+        for(const dependencyPath of dependencyPaths) {
+            const depModified = (
+                filesModified.getModifiedTime(dependencyPath)
+            );
+            if(depModified > objectModified) {
+                this.logger.trace(
+                    "Incremental: Dependency was recently updated:",
+                    dependencyPath
+                );
+                this.logger.debug(
+                    "Incremental: Compilation needed because " +
+                    "a dependency has been updated:", sourcePath
+                );
+                return true;
+            }
+        }
+        // Nothing has changed, no rebuild needed
+        this.logger.debug(
+            "Incremental: No compilation needed for source file:",
+            sourcePath
+        );
+        return false;
+    }
+    
     async runCompile() {
         this.logger.trace("Running compile action.");
         if(!zbsIsActionCompile(this.action)) {
@@ -665,9 +706,8 @@ export class ZbsProjectActionRunner {
         const depsPath = path.join(
             this.action.outputPath, "zebes.deps.json.gzip"
         );
-        const dependencies = new ZbsDependencyMap(
-            this.getConfigCwd(), this.logger
-        );
+        const dependencies = new ZbsDependencyMap(cwd, this.logger);
+        const filesModified = new ZbsFilesModified(cwd, this.logger);
         if(incremental) {
             // Attempt to load dependencies information from a prior run
             if(fs.existsSync(depsPath)) {
@@ -682,27 +722,21 @@ export class ZbsProjectActionRunner {
             ));
             for(const sourcePath of sourcePaths) {
                 const objectPath = path.join(
-                    this.action.outputPath, sourcePath
+                    this.action.outputPath,
+                    sourcePath + this.getCompileOutputExt(),
                 );
-                let needsBuild: boolean = true;
-                if(!this.project.rebuild && (
-                    !rebuildPaths || !rebuildPaths.has(sourcePath)
-                )) {
-                    const sourceTime = fs.statSync(sourcePath, {
-                        bigint: true,
-                        throwIfNoEntry: false,
-                    });
-                    const objectTime = fs.statSync(objectPath, {
-                        bigint: true,
-                        throwIfNoEntry: false,
-                    });
-                    needsBuild = (
-                        !sourceTime || !objectTime ||
-                        sourceTime >= objectTime
-                    );
-                }
+                const needsBuild: boolean = (
+                    this.project.rebuild ||
+                    (rebuildPaths && rebuildPaths.has(sourcePath)) ||
+                    this.checkRebuildNeeded(
+                        dependencies,
+                        filesModified,
+                        sourcePath,
+                        objectPath,
+                    )
+                );
                 if(needsBuild) {
-                    buildPaths.push(sourcePath);
+                    buildPaths.push(path.normalize(sourcePath));
                 }
                 else {
                     this.logger.debug(
@@ -710,21 +744,22 @@ export class ZbsProjectActionRunner {
                     );
                 }
             }
+            // TODO: remove
             // Add dependencies to the build paths list
-            const dependants = dependencies.getDependants(buildPaths);
-            const buildPathsSet = new Set(buildPaths);
-            for(const buildPath of buildPaths) {
-                dependants.delete(buildPath);
-            }
-            for(const sourcePath of sourcePaths) {
-                if(dependants.has(sourcePath) && !buildPathsSet.has(sourcePath)) {
-                    buildPaths.push(sourcePath);
-                    this.logger.debug(
-                        "Source file will be rebuilt due to rebuilt dependencies:",
-                        sourcePath
-                    );
-                }
-            }
+            // const dependants = dependencies.getDependants(buildPaths);
+            // const buildPathsSet = new Set(buildPaths);
+            // for(const buildPath of buildPaths) {
+            //     dependants.delete(buildPath);
+            // }
+            // for(const sourcePath of sourcePaths) {
+            //     if(dependants.has(sourcePath) && !buildPathsSet.has(sourcePath)) {
+            //         buildPaths.push(sourcePath);
+            //         this.logger.debug(
+            //             "Source file will be rebuilt due to rebuilt dependencies:",
+            //             sourcePath
+            //         );
+            //     }
+            // }
         }
         const build = async (buildPath: string) => {
             if(!zbsIsActionCompile(this.action)) {
@@ -775,9 +810,17 @@ export class ZbsProjectActionRunner {
                     compiler: compiler,
                     compileArgs: baseArgs,
                     includePaths: includePaths,
-                    compileMakeRuleArg: this.getCompileMakeRuleArg(),
+                    compileMakeRuleArg: (
+                        this.system && this.system.compileMakeRuleArg
+                    ),
                     includeSourcePatterns: (
                         this.system && this.system.includeSourcePatterns
+                    ),
+                    importSourcePatterns: (
+                        this.system && this.system.importSourcePatterns
+                    ),
+                    importSourceExt: (
+                        this.system && this.system.importSourceExt
                     ),
                 });
             }
@@ -787,7 +830,7 @@ export class ZbsProjectActionRunner {
             Math.max(this.project.parallel, 1),
             buildPaths.map((buildPath) => (() => build(buildPath))),
         );
-        if(incremental && !this.project.dryRun) {
+        if(incremental && !this.project.dryRun && dependencies.anyUpdate) {
             this.logger.debug("Writing dependencies data:", depsPath);
             await dependencies.write(depsPath);
         }

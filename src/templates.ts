@@ -9,6 +9,7 @@ export const zbsInitProjectTemplateC = {
             "name": "c",
             "compiler": "gcc",
             "compileArgs": ["-c"],
+            "compileMakeRuleArg": "-MM",
             "includePaths": ["include"],
             "libraryPaths": ["lib"],
             "libraries": []
@@ -50,6 +51,7 @@ export const zbsInitProjectTemplateCpp = {
             "name": "c++",
             "compiler": "g++",
             "compileArgs": ["-c"],
+            "compileMakeRuleArg": "-MM",
             "includePaths": ["include"],
             "libraryPaths": ["lib"],
             "libraries": []
@@ -90,7 +92,7 @@ export const zbsInitProjectTemplateD = {
         {
             "name": "d",
             "compiler": "dmd",
-            "compileArgs": ["-c"],
+            "compileArgs": ["-c"], // -i only for single step build
             "includePaths": [],
             "libraryPaths": [],
             "libraries": [],
@@ -98,7 +100,11 @@ export const zbsInitProjectTemplateD = {
             "compileOutputArg": "-of",
             "linkOutputArg": "-of",
             "libraryPathArg": "-L-L",
-            "libraryArg": "-L-l"
+            "libraryArg": "-L-l",
+            "importSourceExt": [".d", ".di"],
+            "importSourcePatterns": [
+                "import\\s+([a-zA-Z0-9]+\\s*=\\s*)?(?<name>[a-zA-Z0-9_\\.]+)\\s*[:;]",
+            ]
         }
     ],
     "targets": [
