@@ -5,8 +5,8 @@ import * as json5 from "json5";
 import * as toml from "@iarna/toml";
 import * as yaml from "yaml";
 
-import {ZbsConfigProject} from "./config";
-import {zbsValidateProject} from "./validate";
+import {ZbsConfigProject} from "./config_types";
+import {zbsValidateConfigProject} from "./config_validate";
 
 export const ZbsProjectConfigFileNames: {[name: string]: string} = {
     "zebes.json": "json",
@@ -57,7 +57,7 @@ export function zbsLoadProjectConfig(
     }
     const errors: string[] = [];
     const warnings: string[] = [];
-    const project = zbsValidateProject(content, {
+    const project = zbsValidateConfigProject(content, {
         path: "project",
         errors: errors,
         warnings: warnings,

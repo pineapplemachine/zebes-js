@@ -22,6 +22,18 @@ export class ZbsLogger {
         }
     }
     
+    write(level: number, message: any, ...rest: any[]) {
+        if(level >= this.level) {
+            process.stdout.write(message);
+            for(const value of rest) {
+                process.stdout.write(" ");
+                process.stdout.write(
+                    typeof(value) === "function" ? value() : value
+                );
+            }
+        }
+    }
+    
     trace(message: any, ...rest: any[]) {
         return this.log(ZbsLogLevel.Trace, "Trace:", message, ...rest);
     }
@@ -34,6 +46,10 @@ export class ZbsLogger {
         return this.log(ZbsLogLevel.Info, message, ...rest);
     }
     
+    writeInfo(message: any, ...rest: any[]) {
+        return this.write(ZbsLogLevel.Info, message, ...rest);
+    }
+    
     warn(message: any, ...rest: any[]) {
         return this.log(ZbsLogLevel.Warn, "Warning:", message, ...rest);
     }
@@ -44,5 +60,8 @@ export class ZbsLogger {
     
     critical(message: any, ...rest: any[]) {
         return this.log(ZbsLogLevel.Critical, "Critical:", message, ...rest);
+    }
+    
+    progress(current: number, total: number) {
     }
 }

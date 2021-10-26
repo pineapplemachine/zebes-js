@@ -4,7 +4,7 @@
 import * as sourceMapSupport from "source-map-support";
 sourceMapSupport.install();
 
-import {zbsCliMain} from "./cli";
+import {zbsCliMain} from "./cli/cli_main";
 
 zbsCliMain().then((statusCode) => {
     process.exit(statusCode);

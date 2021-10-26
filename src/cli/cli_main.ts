@@ -4,19 +4,31 @@ import * as path from "path";
 import * as toml from "@iarna/toml";
 import * as yaml from "yaml";
 
-import {zbsGetArgParser} from "./argparse";
-import {zbsFindProjectConfigPath} from "./loadconfig";
-import {zbsLoadProjectConfig} from "./loadconfig";
-import {ZbsProjectConfigFileNames} from "./loadconfig";
-import {ZbsLogger} from "./logger";
-import {ZbsLogLevel} from "./logger";
-import {ZbsProject} from "./project";
-import {ZbsProjectTargetRunner} from "./project";
-import {zbsInitProjectTemplates} from "./templates";
-import {zbsProjectToString} from "./tostring";
-import {zbsValueToString} from "./tostring";
+import {zbsGetArgParser} from "./cli_args";
+
+import {zbsFindProjectConfigPath} from "../config/config_load";
+import {zbsLoadProjectConfig} from "../config/config_load";
+import {ZbsProjectConfigFileNames} from "../config/config_load";
+import {ZbsLogger} from "../logger";
+import {ZbsLogLevel} from "../logger";
+import {ZbsProject} from "../project";
+import {ZbsProjectTargetRunner} from "../target_runner";
+import {zbsInitProjectTemplates} from "../templates";
+import {zbsProjectToString} from "../to_string";
+import {zbsValueToString} from "../to_string";
 
 /**
+
+immediate todo:
+1. inflate the downloaded zip file
+2. run shell commands in the extracted dir to compile raylib
+3. copy raylib.a to the lib/ directory
+4. cache raylib.a (with version information too)
+
+zip - https://www.npmjs.com/package/extract-zip (check deps)
+7z - use command line 7z binary
+tar - https://www.npmjs.com/package/untar
+rar - use unrar binary
 
 TODO: add some things
 fix incremental builds
@@ -26,6 +38,8 @@ action type: fetch
 action type: inflate
 action type: rename
 action type: copy
+--no-cache CLI arg to fetch and ignore cache
+zebes refresh to clear download cache etc
 DMD -makedeps
 DMD -J and ImportExpressions
 external dependency cache

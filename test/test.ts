@@ -8,8 +8,8 @@ import {Group as CanaryGroup} from "canary-test";
 // @ts-ignore
 import * as fsExtra from "fs-extra";
 
-import {zbsCliMain} from "../src/cli";
-import {zbsProcessSpawnDump} from "../src/process";
+import {zbsCliMain} from "../src/cli/cli_main";
+import {zbsProcessSpawnDump} from "../src/util/util_process";
 
 export const canary = CanaryGroup("Zebes");
 

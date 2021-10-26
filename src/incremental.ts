@@ -6,11 +6,12 @@
 
 import * as fs from "fs";
 import * as path from "path";
-import * as zlib from "zlib";
 
-import {ZbsConfigSystem} from "./config";
+import {ZbsConfigSystem} from "./config/config_types";
 import {ZbsLogger} from "./logger";
-import {zbsProcessSpawn} from "./process";
+import {zbsProcessSpawn} from "./util/util_process";
+import {zbsGzipJsonRead} from "./util/util_json_gzip";
+import {zbsGzipJsonWrite} from "./util/util_json_gzip";
 
 export interface ZbsDependencyMapUpdateOptions {
     sourcePath: string;
@@ -79,22 +80,17 @@ export class ZbsDependencyMap {
     }
     
     async write(dataPath: string): Promise<void> {
-        const jsonData = JSON.stringify({
+        await zbsGzipJsonWrite(dataPath, {
             version: 1,
             timestamp: new Date().getTime(),
             cwd: this.cwd,
             sources: this.sources,
         });
-        const gzipData = zlib.gzipSync(jsonData);
-        fs.writeFileSync(dataPath, gzipData);
-        this.logger.trace(this.sources);
     }
     
     async load(dataPath: string): Promise<void> {
-        const gzipData = fs.readFileSync(dataPath);
-        const jsonData = zlib.gunzipSync(gzipData);
-        const data = JSON.parse(jsonData.toString("utf-8"));
-        this.sources = data.sources;
+        const data = await zbsGzipJsonRead(dataPath);
+        this.sources = data.sources || {};
         this.anyUpdate = false;
     }
     

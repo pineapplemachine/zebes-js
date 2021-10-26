@@ -1,11 +1,12 @@
-import {ZbsConfigProject} from "./config";
-import {ZbsConfigSystem} from "./config";
-import {ZbsConfigAction} from "./config";
-import {ZbsConfigActionShell} from "./config";
-import {ZbsConfigActionRemove} from "./config";
-import {ZbsConfigActionCompile} from "./config";
-import {ZbsConfigActionLink} from "./config";
-import {ZbsConfigTarget} from "./config";
+import {ZbsConfigActionCompile} from "./config_types";
+import {ZbsConfigActionFetch} from "./config_types";
+import {ZbsConfigActionLink} from "./config_types";
+import {ZbsConfigActionRemove} from "./config_types";
+import {ZbsConfigActionShell} from "./config_types";
+import {ZbsConfigAction} from "./config_types";
+import {ZbsConfigProject} from "./config_types";
+import {ZbsConfigSystem} from "./config_types";
+import {ZbsConfigTarget} from "./config_types";
 
 export interface ZbsValidateContext {
     path: string;
@@ -41,6 +42,25 @@ export function zbsValidateBoolean(
     }
     else {
         return true;
+    }
+}
+
+/**
+ * Coerce the given value to either a finite number or undefined.
+ */
+export function zbsValidateFiniteNumber(
+    value: any, context: ZbsValidateContext
+): number | undefined {
+    if(value === null || value === undefined) {
+        return undefined;
+    }
+    const numValue: number = +value;
+    if(Number.isFinite(numValue)) {
+        return numValue;
+    }
+    else {
+        context.errors.push(`At ${context.path}: Must be a finite number.`);
+        return 0;
     }
 }
 
@@ -275,7 +295,7 @@ export function zbsValidateObject(
     };
 }
 
-export function zbsValidateProject(
+export function zbsValidateConfigProject(
     value: any, context: ZbsValidateContext
 ): ZbsConfigProject {
     return <ZbsConfigProject> zbsValidateObject({
@@ -284,13 +304,19 @@ export function zbsValidateProject(
         incremental: zbsValidateBoolean,
         system: zbsValidateString,
         allowActionCycles: zbsValidateBoolean,
-        systems: zbsValidateDefinedList<ZbsConfigSystem>(zbsValidateSystem),
-        actions: zbsValidateDefinedList<ZbsConfigAction>(zbsValidateAction),
-        targets: zbsValidateDefinedList<ZbsConfigTarget>(zbsValidateTarget),
+        systems: zbsValidateDefinedList<ZbsConfigSystem>(
+            zbsValidateConfigSystem
+        ),
+        actions: zbsValidateDefinedList<ZbsConfigAction>(
+            zbsValidateConfigAction
+        ),
+        targets: zbsValidateDefinedList<ZbsConfigTarget>(
+            zbsValidateConfigTarget
+        ),
     })(value, context);
 }
 
-export function zbsValidateSystem(
+export function zbsValidateConfigSystem(
     value: any, context: ZbsValidateContext
 ): ZbsConfigSystem {
     return <ZbsConfigSystem> zbsValidateObject({
@@ -304,6 +330,7 @@ export function zbsValidateSystem(
         includePathArg: zbsValidateString,
         compileOutputArg: zbsValidateString,
         compileOutputExt: zbsValidateString,
+        compileMakeRuleArg: zbsValidateString,
         includeSourcePatterns: zbsValidateStringList,
         importSourcePatterns: zbsValidateStringList,
         importSourceExt: zbsValidateStringList,
@@ -317,11 +344,11 @@ export function zbsValidateSystem(
     })(value, context);
 }
 
-export function zbsValidateAction(
+export function zbsValidateConfigAction(
     value: any, context: ZbsValidateContext
 ): ZbsConfigAction | undefined {
     const action = <ZbsConfigAction | undefined> (
-        zbsValidateActionInline(value, context)
+        zbsValidateConfigActionInline(value, context)
     );
     if(action) {
         action.name = zbsValidateRequiredString(value.name, {
@@ -333,21 +360,21 @@ export function zbsValidateAction(
     return action;
 }
 
-export function zbsValidateActionStringOrInline(
+export function zbsValidateConfigActionStringOrInline(
     value: any, context: ZbsValidateContext
 ): ZbsConfigAction | string | undefined {
     if(value === undefined || (value && typeof(value) === "string")) {
         return value;
     }
     else {
-        return zbsValidateActionInline(value, context) || "";
+        return zbsValidateConfigActionInline(value, context) || "";
     }
 }
 
-export function zbsValidateRequiredActionStringOrInline(
+export function zbsValidateRequiredConfigActionStringOrInline(
     value: any, context: ZbsValidateContext
 ): ZbsConfigAction | string {
-    const action = zbsValidateActionStringOrInline(value, context);
+    const action = zbsValidateConfigActionStringOrInline(value, context);
     if(!action) {
         context.errors.push(
             `At ${context.path}: Must be either an action name string ` +
@@ -357,9 +384,19 @@ export function zbsValidateRequiredActionStringOrInline(
     return action || "";
 }
     
-export function zbsValidateActionInline(
+export function zbsValidateConfigActionInline(
     value: any, context: ZbsValidateContext
 ): ZbsConfigAction | undefined {
+    const CommonObject = {
+        name: zbsValidateString,
+        nextAction: zbsValidateConfigActionStringOrInline,
+        nextActionFailure: zbsValidateConfigActionStringOrInline,
+        nextActionFinal: zbsValidateConfigActionStringOrInline,
+        ignoreFailure: zbsValidateBoolean,
+        system: zbsValidateString,
+        env: zbsValidateEnv,
+        cwd: zbsValidateString,
+    };
     if(!value || typeof(value) !== "object") {
         context.errors.push(`At ${context.path}: Must be an object.`);
         return undefined;
@@ -367,35 +404,35 @@ export function zbsValidateActionInline(
     if(value.type === "shell") {
         return <ZbsConfigActionShell> zbsValidateObject({
             type: zbsValidateExactString("shell"),
-            nextAction: zbsValidateActionStringOrInline,
-            nextActionFailure: zbsValidateActionStringOrInline,
-            nextActionFinal: zbsValidateActionStringOrInline,
-            ignoreFailure: zbsValidateBoolean,
-            system: zbsValidateString,
-            env: zbsValidateEnv,
-            cwd: zbsValidateString,
             commands: zbsValidateRequiredStringList,
+            ...CommonObject,
+        })(value, context);
+    }
+    else if(value.type === "fetch") {
+        return <ZbsConfigActionFetch> zbsValidateObject({
+            type: zbsValidateExactString("fetch"),
+            uri: zbsValidateRequiredString,
+            outputPath: zbsValidateRequiredString,
+            cache: zbsValidateBoolean,
+            overwrite: zbsValidateBoolean,
+            httpMethod: zbsValidateString,
+            httpHeaders: zbsValidateEnv,
+            ftpUsername: zbsValidateString,
+            ftpPassword: zbsValidateString,
+            timeoutSeconds: zbsValidateFiniteNumber,
+            ...CommonObject,
         })(value, context);
     }
     else if(value.type === "remove") {
         return <ZbsConfigActionRemove> zbsValidateObject({
             type: zbsValidateExactString("remove"),
-            nextAction: zbsValidateActionStringOrInline,
-            system: zbsValidateString,
-            cwd: zbsValidateString,
             removePaths: zbsValidateRequiredStringList,
+            ...CommonObject,
         })(value, context);
     }
     else if(value.type === "compile") {
         return <ZbsConfigActionCompile> zbsValidateObject({
             type: zbsValidateExactString("compile"),
-            nextAction: zbsValidateActionStringOrInline,
-            nextActionFailure: zbsValidateActionStringOrInline,
-            nextActionFinal: zbsValidateActionStringOrInline,
-            ignoreFailure: zbsValidateBoolean,
-            system: zbsValidateString,
-            env: zbsValidateEnv,
-            cwd: zbsValidateString,
             incremental: zbsValidateBoolean,
             compiler: zbsValidateString,
             compileArgs: zbsValidateStringList,
@@ -404,18 +441,12 @@ export function zbsValidateActionInline(
             rebuildAll: zbsValidateBoolean,
             rebuildSourcePaths: zbsValidateStringList,
             outputPath: zbsValidateRequiredString,
+            ...CommonObject,
         })(value, context);
     }
     else if(value.type === "link") {
         const action = <ZbsConfigActionLink> zbsValidateObject({
             type: zbsValidateExactString("link"),
-            nextAction: zbsValidateActionStringOrInline,
-            nextActionFailure: zbsValidateActionStringOrInline,
-            nextActionFinal: zbsValidateActionStringOrInline,
-            ignoreFailure: zbsValidateBoolean,
-            system: zbsValidateString,
-            env: zbsValidateEnv,
-            cwd: zbsValidateString,
             linker: zbsValidateString,
             linkArgs: zbsValidateStringList,
             libraryPaths: zbsValidateStringList,
@@ -423,6 +454,7 @@ export function zbsValidateActionInline(
             objectPaths: zbsValidateStringList,
             outputPath: zbsValidateString,
             outputBinaryName: zbsValidateString,
+            ...CommonObject,
         })(value, context);
         if(!action.outputPath && !action.outputBinaryName) {
             context.errors.push(
@@ -441,7 +473,7 @@ export function zbsValidateActionInline(
     }
 }
 
-export function zbsValidateTarget(
+export function zbsValidateConfigTarget(
     value: any, context: ZbsValidateContext
 ): ZbsConfigTarget {
     return <ZbsConfigTarget> zbsValidateObject({
@@ -459,7 +491,7 @@ export function zbsValidateTarget(
         libraries: zbsValidateStringList,
         // TODO: Also accept action names
         actions: zbsValidateRequiredDefinedList<ZbsConfigAction | string>(
-            zbsValidateRequiredActionStringOrInline
+            zbsValidateRequiredConfigActionStringOrInline
         ),
     })(value, context);
 }
