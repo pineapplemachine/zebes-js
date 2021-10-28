@@ -85,9 +85,6 @@ export function zbsProjectToString(project: ZbsProject): string {
     return "Project:\n" + zbsObjectToString({
         path: project.path,
         configPath: project.configPath,
-        rebuild: project.rebuild,
-        parallel: project.parallel,
-        promptYes: project.promptYes,
         dryRun: project.dryRun,
         config: project.config,
     }, "  ");

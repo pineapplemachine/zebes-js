@@ -98,7 +98,7 @@ export class ZbsProjectActionLinkRunner extends ZbsProjectActionRunner {
         this.logger.info("$", linker, ...args);
         const statusCode = await zbsProcessSpawn(linker, args, {
             cwd: cwd,
-            env: Object.assign({}, process.env, env),
+            env: Object.assign({}, this.project.env, env),
             shell: true,
         }, {
             stdout: (data) => this.logger.info(data.toString()),

@@ -21,6 +21,7 @@ export class ZbsProjectActionShellRunner extends ZbsProjectActionRunner {
         }
         const cwd = this.getConfigCwd();
         const env = this.getConfigObjectAdditive<string>("env");
+        this.logger.debug("Current working directory for shell action:", cwd);
         for(const command of this.action.commands) {
             if(!command) {
                 continue;
@@ -32,7 +33,7 @@ export class ZbsProjectActionShellRunner extends ZbsProjectActionRunner {
             this.logger.info("$", command);
             const statusCode = await zbsProcessExec(command, {
                 cwd: cwd,
-                env: Object.assign({}, process.env, env),
+                env: Object.assign({}, this.project.env, env),
                 shell: true,
             }, {
                 stdout: (data) => this.logger.info(data.toString()),

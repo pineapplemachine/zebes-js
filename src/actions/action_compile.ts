@@ -93,9 +93,11 @@ export class ZbsProjectActionCompileRunner extends ZbsProjectActionRunner {
         });
         const buildPaths: string[] = incremental ? [] : sourcePaths;
         const depsPath = path.join(
-            this.action.outputPath, "zebes.deps.json.gzip"
+            this.action.outputPath, ".zebes/deps.json.gz"
         );
-        const dependencies = new ZbsDependencyMap(cwd, this.logger);
+        const dependencies = new ZbsDependencyMap(
+            cwd, this.project.env, this.logger
+        );
         const filesModified = new ZbsFilesModified(cwd, this.logger);
         if(incremental) {
             // Attempt to load dependencies information from a prior run
@@ -115,7 +117,7 @@ export class ZbsProjectActionCompileRunner extends ZbsProjectActionRunner {
                     sourcePath + this.getCompileOutputExt(),
                 );
                 const needsBuild: boolean = (
-                    this.project.rebuild ||
+                    this.project.home.config.rebuild ||
                     (rebuildPaths && rebuildPaths.has(sourcePath)) ||
                     this.checkRebuildNeeded(
                         dependencies,
@@ -162,7 +164,7 @@ export class ZbsProjectActionCompileRunner extends ZbsProjectActionRunner {
                 });
                 const statusCode = await zbsProcessSpawn(compiler, args, {
                     cwd: cwd,
-                    env: Object.assign({}, process.env, env),
+                    env: Object.assign({}, this.project.env, env),
                     shell: true,
                 }, {
                     stdout: (data) => this.logger.info(data.toString()),
@@ -200,11 +202,14 @@ export class ZbsProjectActionCompileRunner extends ZbsProjectActionRunner {
         }
         this.logger.info(`Building ${buildPaths.length} source files.`);
         await zbsPromiseAllLimitSettle(
-            Math.max(this.project.parallel, 1),
+            Math.max(this.project.home.config.parallel || 0, 1),
             buildPaths.map((buildPath) => (() => build(buildPath))),
         );
         if(incremental && !this.project.dryRun && dependencies.anyUpdate) {
             this.logger.debug("Writing dependencies data:", depsPath);
+            if(!fs.existsSync(path.dirname(depsPath))){
+                fs.mkdirSync(path.dirname(depsPath), {recursive: true});
+            }
             await dependencies.write(depsPath);
         }
     }

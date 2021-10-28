@@ -11,12 +11,6 @@ export class ZbsProject {
     path: string;
     /** Path to project configuration file. */
     configPath: string;
-    /** Force rebuild for otherwise incremental compile actions. */
-    rebuild: boolean;
-    /** Maximum permitted number of parallel tasks. */
-    parallel: number;
-    /** Auto respond to [y/n] prompts with "yes". */
-    promptYes: boolean;
     /** Dry-run flag: Announce actions, don't take them. */
     dryRun: boolean;
     /** Project config object loaded from project file. */
@@ -27,6 +21,8 @@ export class ZbsProject {
     prompt: ZbsPrompt;
     /** Helper class for dealing with Zebes' home directory. */
     home: ZbsHome;
+    /** Run using these environment variables. */
+    env: {[name: string]: string};
     /** Map system config objects by name. */
     systemsMap: {[name: string]: ZbsConfigSystem};
     /** Map action config objects by name. */
@@ -39,18 +35,17 @@ export class ZbsProject {
         configPath: string,
         config: ZbsConfigProject,
         logger: ZbsLogger,
-        homePath?: string,
+        home: ZbsHome,
+        env?: {[name: string]: string},
     ) {
         this.path = projectPath;
         this.configPath = configPath;
         this.config = config;
         this.logger = logger;
-        this.rebuild = false;
-        this.promptYes = false;
+        this.home = home;
+        this.env = env || <any> process.env;
         this.dryRun = false;
-        this.parallel = 0;
         this.prompt = new ZbsPrompt();
-        this.home = new ZbsHome(logger, homePath);
         function buildMap<T extends {name?: string | undefined}>(
             list: T[] | null | undefined
         ): {[name: string]: T} {
@@ -107,7 +102,7 @@ export class ZbsProject {
     async promptConfirm(
         message: string, defaultResult?: boolean
     ): Promise<boolean> {
-        return this.promptYes || (
+        return this.home.config.promptYes || (
             await this.prompt.confirm(message, defaultResult)
         );
     }

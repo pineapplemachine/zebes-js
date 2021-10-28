@@ -1,6 +1,4 @@
 import * as fs from "fs";
-import * as http from "http";
-import * as https from "https";
 import * as path from "path";
 import {URL} from "url";
 
@@ -35,46 +33,45 @@ export class ZbsProjectActionFetchRunner extends ZbsProjectActionRunner {
                 timeout: 1000 * (this.action.timeoutSeconds || 0),
                 responseType: "stream",
             });
-            // Set up the destination file stream
+            // Handle progress bar
+            const contentLength = +response.headers["content-length"];
+            const logProgress = (!contentLength ? undefined :
+                this.logger.progress(
+                    `Downloading ${zbsFormatUnitBytes(contentLength)}`,
+                    contentLength,
+                )
+            );
+            if(logProgress) {
+                logProgress.begin();
+            }
+            if(Number.isFinite(contentLength)) {
+                (<any> response.data).on("data", (data: any) => {
+                    if(logProgress) {
+                        logProgress.increment(data.length);
+                    }
+                });
+            }
+            (<any> response.data).on("error", (error: any) => {
+                if(logProgress) {
+                    logProgress.interrupt();
+                }
+                fs.unlinkSync(partialDestPath);
+                reject(error);
+            });
+            // Pipe request to output file stream
             fs.mkdirSync(path.dirname(destPath), {
                 recursive: true,
             });
             const partialDestPath: string = destPath + ".part";
             const outputStream = fs.createWriteStream(partialDestPath);
             outputStream.on("finish", () => {
+                if(logProgress) {
+                    logProgress.finish();
+                }
                 fs.renameSync(partialDestPath, destPath);
                 resolve();
             });
             (<any> response.data).pipe(outputStream);
-            // Handle progress bar
-            let progressBar: boolean = false;
-            const contentLength = +response.headers["content-length"];
-            if(Number.isFinite(contentLength)) {
-                let currentLength: number = 0;
-                let currentBlocks: number = 0;
-                this.logger.writeInfo(
-                    "Downloading", zbsFormatUnitBytes(contentLength), "| "
-                );
-                (<any> response.data).on("data", (data: any) => {
-                    progressBar = true;
-                    currentLength += data.length;
-                    const blocks = currentLength / contentLength * 24;
-                    while(currentBlocks < blocks) {
-                        this.logger.writeInfo("#");
-                        currentBlocks++;
-                    }
-                    if(currentBlocks === blocks) {
-                        this.logger.writeInfo(" | 100%\n");
-                    }
-                });
-            }
-            (<any> response.data).on("error", (error: any) => {
-                if(progressBar) {
-                    this.logger.writeInfo(" | Interrupted\n");
-                }
-                fs.unlinkSync(partialDestPath);
-                reject(error);
-            });
         });
     }
     

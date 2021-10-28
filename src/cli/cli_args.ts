@@ -119,6 +119,10 @@ function zbsArgParserAddRunTargetArgs(parser: ArgumentParser) {
         action: "store_true",
         help: "Force complete rebuild without incremental compilation.",
     });
+    parser.add_argument("--make-command", {
+        type: "string",
+        help: "Explicitly set \"make\" command, used with Makefiles.",
+    });
     parser.add_argument("--incremental", {
         action: "store_true",
         help: "Force incremental compilation.",

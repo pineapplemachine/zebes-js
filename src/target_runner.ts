@@ -6,6 +6,7 @@ import {zbsValueToString} from "./to_string";
 
 // These imports register action runner implementations as a side-effect
 import "./actions/action_compile";
+import "./actions/action_extract";
 import "./actions/action_fetch";
 import "./actions/action_link";
 import "./actions/action_remove";

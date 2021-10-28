@@ -68,12 +68,18 @@ export class ZbsFilesModified {
 
 export class ZbsDependencyMap {
     cwd: string;
+    env: {[name: string]: string};
     sources: {[name: string]: ZbsDependency};
     logger: ZbsLogger;
     anyUpdate: boolean;
     
-    constructor(cwd: string, logger: ZbsLogger) {
+    constructor(
+        cwd: string,
+        env: {[name: string]: string},
+        logger: ZbsLogger,
+    ) {
         this.cwd = cwd;
+        this.env = env;
         this.sources = {};
         this.logger = logger;
         this.anyUpdate = false;
@@ -108,6 +114,7 @@ export class ZbsDependencyMap {
     }
     
     getDependencies(sourcePath: string): string[] {
+        // TODO: Not good enough! Need to return dependencies' dependencies too
         const dependency = this.sources[path.normalize(sourcePath)];
         return dependency ? dependency.dependencies : [];
     }
@@ -317,7 +324,7 @@ export class ZbsDependencyMap {
         this.logger.debug("$", options.compiler, ...args);
         const statusCode = await zbsProcessSpawn(options.compiler, args, {
             cwd: this.cwd,
-            env: Object.assign({}, process.env, options.env),
+            env: Object.assign({}, this.env, options.env),
             shell: true,
         }, {
             stdout: (data) => {

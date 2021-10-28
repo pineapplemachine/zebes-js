@@ -1,3 +1,14 @@
+export interface ZbsConfigHome {
+    env?: {[name: string]: string};
+    strictConfigFormat?: boolean;
+    promptYes?: boolean;
+    rebuild?: boolean;
+    incremental?: boolean;
+    allowActionCycles?: boolean;
+    parallel?: number;
+    makeCommand?: string;
+}
+
 export interface ZbsConfigProject {
     system?: string;
     env?: {[name: string]: string};
@@ -44,6 +55,7 @@ export interface ZbsConfigActionCommon {
     cwd?: string;
 }
 
+// Run a compiler
 export interface ZbsConfigActionCompile extends ZbsConfigActionCommon {
     type: "compile";
     incremental?: boolean;
@@ -56,6 +68,15 @@ export interface ZbsConfigActionCompile extends ZbsConfigActionCommon {
     outputPath: string;
 }
 
+// Extract files from an archive
+export interface ZbsConfigActionExtract extends ZbsConfigActionCommon {
+    type: "extract";
+    archivePath: string;
+    outputPath: string;
+    format?: string; // zip, gzip, tar, tar.gz, 7z, rar (todo!)
+}
+
+// Fetch a file
 export interface ZbsConfigActionFetch extends ZbsConfigActionCommon {
     type: "fetch";
     uri: string;
@@ -70,6 +91,7 @@ export interface ZbsConfigActionFetch extends ZbsConfigActionCommon {
     retries?: number;
 }
 
+// Run a linker
 export interface ZbsConfigActionLink extends ZbsConfigActionCommon {
     type: "link";
     linker?: string;
@@ -81,18 +103,19 @@ export interface ZbsConfigActionLink extends ZbsConfigActionCommon {
     outputBinaryName?: string;
 }
 
-export interface ZbsConfigActionInflate extends ZbsConfigActionCommon {
-    type: "inflate";
-    archivePath: string;
-    outputPath: string;
-    format?: string; // zip, gzip, tar, tar.gz, 7z, rar (todo!)
+// Run make, mingw32-make, etc.
+export interface ZbsConfigActionMake extends ZbsConfigActionCommon {
+    type: "make";
+    args?: string[];
 }
 
+// Remove files
 export interface ZbsConfigActionRemove extends ZbsConfigActionCommon {
     type: "remove";
     removePaths: string[];
 }
 
+// Run shell commands
 export interface ZbsConfigActionShell extends ZbsConfigActionCommon {
     type: "shell";
     name?: string;
@@ -109,15 +132,29 @@ export interface ZbsConfigActionShell extends ZbsConfigActionCommon {
 export type ZbsConfigAction = (
     ZbsConfigActionCompile |
     ZbsConfigActionFetch |
+    ZbsConfigActionExtract |
     ZbsConfigActionLink |
+    ZbsConfigActionMake |
     ZbsConfigActionRemove |
     ZbsConfigActionShell
 );
 
+export const ZbsConfigActionTypes: string[] = [
+    "compile",
+    "extract",
+    "fetch",
+    "link",
+    "make",
+    "remove",
+    "shell",
+];
+
 export type ZbsConfigActionType = (
     "compile" |
+    "extract" |
     "fetch" |
     "link" |
+    "make" |
     "remove" |
     "shell"
 );
@@ -138,30 +175,7 @@ export interface ZbsConfigTarget {
     actions: (ZbsConfigAction | string)[];
 }
 
-export function zbsIsActionShell(
-    value: ZbsConfigAction
-): value is ZbsConfigActionShell {
-    return value && typeof(value) === "object" && (
-        value.type === "shell"
-    );
-}
-
-export function zbsIsActionFetch(
-    value: ZbsConfigAction
-): value is ZbsConfigActionFetch {
-    return value && typeof(value) === "object" && (
-        value.type === "fetch"
-    );
-}
-
-export function zbsIsActionRemove(
-    value: ZbsConfigAction
-): value is ZbsConfigActionRemove {
-    return value && typeof(value) === "object" && (
-        value.type === "remove"
-    );
-}
-
+/** Check if an action's type string is "compile". */
 export function zbsIsActionCompile(
     value: ZbsConfigAction
 ): value is ZbsConfigActionCompile {
@@ -170,10 +184,56 @@ export function zbsIsActionCompile(
     );
 }
 
+/** Check if an action's type string is "extract". */
+export function zbsIsActionExtract(
+    value: ZbsConfigAction
+): value is ZbsConfigActionExtract {
+    return value && typeof(value) === "object" && (
+        value.type === "extract"
+    );
+}
+
+/** Check if an action's type string is "fetch". */
+export function zbsIsActionFetch(
+    value: ZbsConfigAction
+): value is ZbsConfigActionFetch {
+    return value && typeof(value) === "object" && (
+        value.type === "fetch"
+    );
+}
+
+/** Check if an action's type string is "link". */
 export function zbsIsActionLink(
     value: ZbsConfigAction
 ): value is ZbsConfigActionLink {
     return value && typeof(value) === "object" && (
         value.type === "link"
+    );
+}
+
+/** Check if an action's type string is "make". */
+export function zbsIsActionMake(
+    value: ZbsConfigAction
+): value is ZbsConfigActionMake {
+    return value && typeof(value) === "object" && (
+        value.type === "make"
+    );
+}
+
+/** Check if an action's type string is "remove". */
+export function zbsIsActionRemove(
+    value: ZbsConfigAction
+): value is ZbsConfigActionRemove {
+    return value && typeof(value) === "object" && (
+        value.type === "remove"
+    );
+}
+
+/** Check if an action's type string is "shell". */
+export function zbsIsActionShell(
+    value: ZbsConfigAction
+): value is ZbsConfigActionShell {
+    return value && typeof(value) === "object" && (
+        value.type === "shell"
     );
 }

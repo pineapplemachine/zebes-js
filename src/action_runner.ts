@@ -67,6 +67,7 @@ export class ZbsProjectActionRunner {
         this.logger = options.project.logger;
         this.actionHistory = options.actionHistory || [];
         this.configResolver = new ZbsConfigResolver(
+            this.project.home.config,
             this.project.config,
             undefined,
             this.target,

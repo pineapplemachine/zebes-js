@@ -106,3 +106,4 @@ dist
 # Specific to Zebes
 dist/**
 test/run/**
+test/**/downloads/**

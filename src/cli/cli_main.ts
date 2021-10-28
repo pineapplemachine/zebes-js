@@ -9,6 +9,7 @@ import {zbsGetArgParser} from "./cli_args";
 import {zbsFindProjectConfigPath} from "../config/config_load";
 import {zbsLoadProjectConfig} from "../config/config_load";
 import {ZbsProjectConfigFileNames} from "../config/config_load";
+import {ZbsHome} from "../home";
 import {ZbsLogger} from "../logger";
 import {ZbsLogLevel} from "../logger";
 import {ZbsProject} from "../project";
@@ -25,6 +26,8 @@ immediate todo:
 3. copy raylib.a to the lib/ directory
 4. cache raylib.a (with version information too)
 
+Fix incremental getDependencies method
+
 zip - https://www.npmjs.com/package/extract-zip (check deps)
 7z - use command line 7z binary
 tar - https://www.npmjs.com/package/untar
@@ -32,12 +35,17 @@ rar - use unrar binary
 
 TODO: add some things
 fix incremental builds
-make d work
+make d work DONE
 action type: branch
-action type: fetch
-action type: inflate
+action type: fetch DONE
+action type: extract DONE
 action type: rename
 action type: copy
+fetch FTP and SFTP support
+extract 7z support
+extract gz support
+extract rar support
+action type: make - e.g. dispatch to mingw32-make on windows
 --no-cache CLI arg to fetch and ignore cache
 zebes refresh to clear download cache etc
 DMD -makedeps
@@ -64,137 +72,12 @@ configure to work with raylib-cpp
 
 */
 
-function zbsGetProjectBoolean(
-    logger: ZbsLogger,
-    name: string,
-    cliValue: boolean,
-    envName: string
-): boolean | undefined {
-    const envValue = process.env[envName];
-    if(cliValue) {
-        logger.debug(
-            `Project ${name} behavior is being overridden ` +
-            `by a command-line flag.`
-        );
-        return true;
-    }
-    else if(envName && envValue) {
-        logger.debug(
-            `Project ${name} behavior is being overridden ` +
-            `by the environment variable "${envName}".`
-        );
-        return (envValue.toLowerCase() !== "false");
-    }
-    else {
-        return undefined;
-    }
-}
-
-function zbsGetProjectNumber(
-    logger: ZbsLogger,
-    name: string,
-    cliValue: number,
-    envName: string
-): number | undefined {
-    const envValue = +(<any> process.env[envName]);
-    if(Number.isFinite(cliValue)) {
-        logger.debug(
-            `Project ${name} behavior is being overridden ` +
-            `by a command-line flag.`
-        );
-        return cliValue;
-    }
-    else if(envName && Number.isFinite(envValue)) {
-        logger.debug(
-            `Project ${name} behavior is being overridden ` +
-            `by the environment variable "${envName}".`
-        );
-        return envValue;
-    }
-    else {
-        return undefined;
-    }
-}
-
-export async function zbsCliMain(
-    argv?: string[], cwd?: string
-): Promise<number> {
-    const argParser = zbsGetArgParser();
-    const args = argParser.parse_args(
-        (argv || process.argv).slice(2)
-    );
-    const mainCwd = cwd || process.cwd();
-    const logLevel: number = (
-        args.silent ? Infinity :
-        args.very_verbose ? ZbsLogLevel.Trace :
-        args.verbose ? ZbsLogLevel.Debug :
-        ZbsLogLevel.Info
-    );
-    const logger = new ZbsLogger(logLevel);
-    if(args.command === "init") {
-        const status = zbsCliInit(logger, args, mainCwd);
-        return status;
-    }
-    else if(args.command === "info") {
-        const status = zbsCliInfo(logger, args, mainCwd);
-        return status;
-    }
-    else if(args.command === "run") {
-        const status = await zbsCliRun(logger, args, mainCwd);
-        return status;
-    }
-    else if(!args.command) {
-        argParser.print_help();
-        return 0;
-    }
-    else {
-        const status = await zbsCliRun(
-            logger, args, mainCwd, args.command
-        );
-        return status;
-    }
-}
-
-export function zbsCliInit(
-    logger: ZbsLogger, args: any, cwd: string
-): number {
-    const template = zbsInitProjectTemplates[args.template];
-    if(!template) {
-        logger.error(`Failed to load project template: "${args.template}"`);
-        return 1;
-    }
-    for(const key in ZbsProjectConfigFileNames) {
-        if(fs.existsSync(path.join(cwd, key))) {
-            logger.error(
-                "A Zebes project file already exists in this directory:",
-                key
-            );
-            return 1;
-        }
-    }
-    if(args.format === "json") {
-        logger.info("Writing JSON project config file: zebes.json");
-        fs.writeFileSync(path.join(cwd, "zebes.json"),
-            JSON.stringify(template, undefined, 4)
-        );
-    }
-    else if(args.format === "toml") {
-        logger.info("Writing TOML project config file: zebes.toml");
-        fs.writeFileSync(path.join(cwd, "zebes.toml"),
-            toml.stringify(template)
-        );
-    }
-    else if(args.format === "yaml") {
-        logger.info("Writing YAML project config file: zebes.yaml");
-        fs.writeFileSync(path.join(cwd, "zebes.yaml"),
-            yaml.stringify(template)
-        );
-    }
-    else {
-        logger.error(`Unknown project file format "${args.format}".`);
-        return 1;
-    }
-    return 0;
+async function zbsGetHome(
+    logger: ZbsLogger, args?: any, env?: {[name: string]: string}
+) {
+    const home = new ZbsHome(logger, undefined, env);
+    await home.loadConfig(args, env);
+    return home;
 }
 
 function zbsGetProjectConfig(
@@ -246,15 +129,97 @@ function zbsGetProjectConfig(
     return loadConfig;
 }
 
-export function zbsCliInfo(
-    logger: ZbsLogger, args: any, cwd: string
-): number {
-    const strictConfigFormat = !!zbsGetProjectBoolean(
-        logger, "strict config formats", args.strict_config_format,
-        "ZEBES_PROJECT_STRICT_CONFIG_FORMAT",
+export async function zbsCliMain(
+    argv?: string[], cwd?: string,
+    env?: {[name: string]: string},
+): Promise<number> {
+    const argParser = zbsGetArgParser();
+    const args = argParser.parse_args(
+        (argv || process.argv).slice(2)
     );
+    const mainCwd = cwd || process.cwd();
+    const mainEnv = env || <any> process.env;
+    const logLevel: number = (
+        args.silent ? Infinity :
+        args.very_verbose ? ZbsLogLevel.Trace :
+        args.verbose ? ZbsLogLevel.Debug :
+        ZbsLogLevel.Info
+    );
+    const logger = new ZbsLogger(logLevel);
+    if(args.command === "init") {
+        const status = zbsCliInit(logger, args, mainCwd, mainEnv);
+        return status;
+    }
+    else if(args.command === "info") {
+        const status = await zbsCliInfo(logger, args, mainCwd, mainEnv);
+        return status;
+    }
+    else if(args.command === "run") {
+        const status = await zbsCliRun(logger, args, mainCwd, mainEnv);
+        return status;
+    }
+    else if(!args.command) {
+        argParser.print_help();
+        return 0;
+    }
+    else {
+        const status = await zbsCliRun(
+            logger, args, mainCwd, mainEnv, args.command
+        );
+        return status;
+    }
+}
+
+export function zbsCliInit(
+    logger: ZbsLogger, args: any, cwd: string,
+    env?: {[name: string]: string},
+): number {
+    const template = zbsInitProjectTemplates[args.template];
+    if(!template) {
+        logger.error(`Failed to load project template: "${args.template}"`);
+        return 1;
+    }
+    for(const key in ZbsProjectConfigFileNames) {
+        if(fs.existsSync(path.join(cwd, key))) {
+            logger.error(
+                "A Zebes project file already exists in this directory:",
+                key
+            );
+            return 1;
+        }
+    }
+    if(args.format === "json") {
+        logger.info("Writing JSON project config file: zebes.json");
+        fs.writeFileSync(path.join(cwd, "zebes.json"),
+            JSON.stringify(template, undefined, 4)
+        );
+    }
+    else if(args.format === "toml") {
+        logger.info("Writing TOML project config file: zebes.toml");
+        fs.writeFileSync(path.join(cwd, "zebes.toml"),
+            toml.stringify(template)
+        );
+    }
+    else if(args.format === "yaml") {
+        logger.info("Writing YAML project config file: zebes.yaml");
+        fs.writeFileSync(path.join(cwd, "zebes.yaml"),
+            yaml.stringify(template)
+        );
+    }
+    else {
+        logger.error(`Unknown project file format "${args.format}".`);
+        return 1;
+    }
+    return 0;
+}
+
+export async function zbsCliInfo(
+    logger: ZbsLogger, args: any, cwd: string,
+    env?: {[name: string]: string},
+): Promise<number> {
+    const home = await zbsGetHome(logger, args, env);
     const loadConfig = zbsGetProjectConfig(
-        logger, cwd, args.project, strictConfigFormat
+        logger, cwd, args.project, !!home.config.strictConfigFormat
     );
     if(loadConfig && loadConfig.project) {
         logger.info("Project config:");
@@ -264,15 +229,14 @@ export function zbsCliInfo(
 }
 
 export async function zbsCliRun(
-    logger: ZbsLogger, args: any, cwd: string, command?: string
+    logger: ZbsLogger, args: any, cwd: string,
+    env?: {[name: string]: string},
+    command?: string,
 ): Promise<number> {
+    const home = await zbsGetHome(logger, args, env);
     // Get project configuration
-    const strictConfigFormat = !!zbsGetProjectBoolean(
-        logger, "strict config formats", args.strict_config_format,
-        "ZEBES_PROJECT_STRICT_CONFIG_FORMAT",
-    );
     const loadConfig = zbsGetProjectConfig(
-        logger, cwd, args.project, strictConfigFormat
+        logger, cwd, args.project, !!home.config.strictConfigFormat
     );
     if(!loadConfig || !loadConfig.project) {
         return 1;
@@ -282,32 +246,8 @@ export async function zbsCliRun(
         loadConfig.path,
         loadConfig.project,
         logger,
+        home,
     );
-    // Check CLI flags and env vars for project behavior changes
-    project.promptYes = !!zbsGetProjectBoolean(
-        logger, "prompt acceptance", args.yes,
-        "ZEBES_PROJECT_YES",
-    );
-    project.rebuild = !!zbsGetProjectBoolean(
-        logger, "rebuild", args.rebuild,
-        "ZEBES_PROJECT_REBUILD",
-    );
-    if(!project.config.incremental) {
-        project.config.incremental = !!zbsGetProjectBoolean(
-            logger, "incremental", args.incremental,
-            "ZEBES_PROJECT_INCREMENTAL",
-        );
-    }
-    if(!project.config.allowActionCycles) {
-        project.config.allowActionCycles = !!zbsGetProjectBoolean(
-            logger, "action cycles", args.allow_action_cycles,
-            "ZEBES_PROJECT_ALLOW_ACTION_CYCLES",
-        );
-    }
-    project.parallel = zbsGetProjectNumber(
-        logger, "parallel", args.parallel,
-        "ZEBES_PROJECT_PARALLEL",
-    ) || 0;
     project.dryRun = args.dry_run;
     if(project.dryRun) {
         logger.info("Running target in dry-run mode.");
