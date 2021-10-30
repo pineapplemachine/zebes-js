@@ -9,7 +9,7 @@ import * as path from "path";
 
 import {ZbsConfigSystem} from "./config/config_types";
 import {ZbsLogger} from "./logger";
-import {zbsProcessSpawn} from "./util/util_process";
+import {ZbsProject} from "./project";
 import {zbsGzipJsonRead} from "./util/util_json_gzip";
 import {zbsGzipJsonWrite} from "./util/util_json_gzip";
 
@@ -70,18 +70,21 @@ export class ZbsDependencyMap {
     cwd: string;
     env: {[name: string]: string};
     sources: {[name: string]: ZbsDependency};
+    project: ZbsProject;
     logger: ZbsLogger;
     anyUpdate: boolean;
     
     constructor(
         cwd: string,
         env: {[name: string]: string},
-        logger: ZbsLogger,
+        project: ZbsProject,
+        logger?: ZbsLogger,
     ) {
         this.cwd = cwd;
         this.env = env;
         this.sources = {};
-        this.logger = logger;
+        this.project = project;
+        this.logger = logger || project.logger;
         this.anyUpdate = false;
     }
     
@@ -310,19 +313,14 @@ export class ZbsDependencyMap {
             throw new Error("Dependency map consistency error.");
         }
         this.logger.trace(() => (
-            `Getting dependency information using a make rule flag ` +
-            `(${JSON.stringify(options.compileMakeRuleArg)}).`
+            `Getting dependency information using a make rule flag. ` +
+            `(${JSON.stringify(options.compileMakeRuleArg)})`
         ));
         // Run the compiler with a make rule flag, e.g. -MM
         // This produces a list of dependencies in the format of a make rule
         const args = [...options.compileArgs, options.compileMakeRuleArg];
         let stdoutData: string[] = [];
-        if(options.dryRun) {
-            this.logger.info("Dry-run: $", options.compiler, ...args);
-            return [];
-        }
-        this.logger.debug("$", options.compiler, ...args);
-        const statusCode = await zbsProcessSpawn(options.compiler, args, {
+        const statusCode = await this.project.processSpawn(options.compiler, args, {
             cwd: this.cwd,
             env: Object.assign({}, this.env, options.env),
             shell: true,
@@ -339,6 +337,9 @@ export class ZbsDependencyMap {
                 `Getting dependencies make rule failed with ` +
                 `status code ${statusCode}:`, options.sourcePath
             );
+        }
+        if(this.project.dryRun) {
+            return [];
         }
         // Parse the list of dependencies
         const colonIndex = (stdoutData[0] || "").indexOf(":");

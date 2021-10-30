@@ -1,5 +1,8 @@
 import {ZbsConfigActionCompile} from "./config_types";
+import {ZbsConfigActionCopy} from "./config_types";
 import {ZbsConfigActionFetch} from "./config_types";
+import {ZbsConfigActionExtern} from "./config_types";
+import {ZbsConfigActionExternRequirement} from "./config_types";
 import {ZbsConfigActionExtract} from "./config_types";
 import {ZbsConfigActionLink} from "./config_types";
 import {ZbsConfigActionMake} from "./config_types";
@@ -310,6 +313,7 @@ export function zbsValidateConfigHome(
         incremental: zbsValidateBoolean,
         allowActionCycles: zbsValidateBoolean,
         parallel: zbsValidateFiniteNumber,
+        runMaxActions: zbsValidateFiniteNumber,
         makeCommand: zbsValidateString,
     })(value, context);
 }
@@ -363,6 +367,29 @@ export function zbsValidateConfigSystem(
     })(value, context);
 }
 
+export function zbsValidateConfigTarget(
+    value: any, context: ZbsValidateContext
+): ZbsConfigTarget {
+    return <ZbsConfigTarget> zbsValidateObject({
+        name: zbsValidateRequiredString,
+        env: zbsValidateEnv,
+        cwd: zbsValidateString,
+        incremental: zbsValidateBoolean,
+        system: zbsValidateString,
+        compiler: zbsValidateString,
+        compileArgs: zbsValidateStringList,
+        includePaths: zbsValidateStringList,
+        linker: zbsValidateString,
+        linkArgs: zbsValidateStringList,
+        libraryPaths: zbsValidateStringList,
+        libraries: zbsValidateStringList,
+        // TODO: Also accept action names
+        actions: zbsValidateRequiredDefinedList<ZbsConfigAction | string>(
+            zbsValidateRequiredConfigActionStringOrInline
+        ),
+    })(value, context);
+}
+
 export function zbsValidateConfigAction(
     value: any, context: ZbsValidateContext
 ): ZbsConfigAction | undefined {
@@ -402,103 +429,51 @@ export function zbsValidateRequiredConfigActionStringOrInline(
     }
     return action || "";
 }
+
+export const ZbsValidateConfigActionCommonObject = {
+    name: zbsValidateString,
+    nextAction: zbsValidateConfigActionStringOrInline,
+    nextActionFailure: zbsValidateConfigActionStringOrInline,
+    nextActionFinal: zbsValidateConfigActionStringOrInline,
+    ignoreFailure: zbsValidateBoolean,
+    system: zbsValidateString,
+    env: zbsValidateEnv,
+    cwd: zbsValidateString,
+};
     
 export function zbsValidateConfigActionInline(
     value: any, context: ZbsValidateContext
 ): ZbsConfigAction | undefined {
-    const CommonObject = {
-        name: zbsValidateString,
-        nextAction: zbsValidateConfigActionStringOrInline,
-        nextActionFailure: zbsValidateConfigActionStringOrInline,
-        nextActionFinal: zbsValidateConfigActionStringOrInline,
-        ignoreFailure: zbsValidateBoolean,
-        system: zbsValidateString,
-        env: zbsValidateEnv,
-        cwd: zbsValidateString,
-    };
     if(!value || typeof(value) !== "object") {
         context.errors.push(`At ${context.path}: Must be an object.`);
         return undefined;
     }
     if(value.type === "compile") {
-        return <ZbsConfigActionCompile> zbsValidateObject({
-            type: zbsValidateExactString("compile"),
-            incremental: zbsValidateBoolean,
-            compiler: zbsValidateString,
-            compileArgs: zbsValidateStringList,
-            includePaths: zbsValidateStringList,
-            sourcePaths: zbsValidateStringList,
-            rebuildAll: zbsValidateBoolean,
-            rebuildSourcePaths: zbsValidateStringList,
-            outputPath: zbsValidateRequiredString,
-            ...CommonObject,
-        })(value, context);
+        return zbsValidateConfigActionCompile(value, context);
+    }
+    else if(value.type === "copy") {
+        return zbsValidateConfigActionCopy(value, context);
+    }
+    else if(value.type === "extern") {
+        return zbsValidateConfigActionExtern(value, context);
     }
     else if(value.type === "extract") {
-        return <ZbsConfigActionExtract> zbsValidateObject({
-            type: zbsValidateExactString("extract"),
-            archivePath: zbsValidateRequiredString,
-            outputPath: zbsValidateRequiredString,
-            format: zbsValidateString,
-            ...CommonObject,
-        })(value, context);
+        return zbsValidateConfigActionExtract(value, context);
     }
     else if(value.type === "fetch") {
-        return <ZbsConfigActionFetch> zbsValidateObject({
-            type: zbsValidateExactString("fetch"),
-            uri: zbsValidateRequiredString,
-            outputPath: zbsValidateRequiredString,
-            cache: zbsValidateBoolean,
-            overwrite: zbsValidateBoolean,
-            httpMethod: zbsValidateString,
-            httpHeaders: zbsValidateEnv,
-            ftpUsername: zbsValidateString,
-            ftpPassword: zbsValidateString,
-            timeoutSeconds: zbsValidateFiniteNumber,
-            ...CommonObject,
-        })(value, context);
+        return zbsValidateConfigActionFetch(value, context);
     }
     else if(value.type === "link") {
-        const action = <ZbsConfigActionLink> zbsValidateObject({
-            type: zbsValidateExactString("link"),
-            linker: zbsValidateString,
-            linkArgs: zbsValidateStringList,
-            libraryPaths: zbsValidateStringList,
-            libraries: zbsValidateStringList,
-            objectPaths: zbsValidateStringList,
-            outputPath: zbsValidateString,
-            outputBinaryName: zbsValidateString,
-            ...CommonObject,
-        })(value, context);
-        if(!action.outputPath && !action.outputBinaryName) {
-            context.errors.push(
-                `At ${context.path}.type: Link action ` +
-                `must specify either an "outputPath" or ` +
-                `an "outputBinaryName" attribute.`
-            );
-        }
-        return action;
+        return zbsValidateConfigActionLink(value, context);
     }
     else if(value.type === "make") {
-        return <ZbsConfigActionRemove> zbsValidateObject({
-            type: zbsValidateExactString("make"),
-            args: zbsValidateStringList,
-            ...CommonObject,
-        })(value, context);
+        return zbsValidateConfigActionMake(value, context);
     }
     else if(value.type === "remove") {
-        return <ZbsConfigActionRemove> zbsValidateObject({
-            type: zbsValidateExactString("remove"),
-            removePaths: zbsValidateRequiredStringList,
-            ...CommonObject,
-        })(value, context);
+        return zbsValidateConfigActionRemove(value, context);
     }
     else if(value.type === "shell") {
-        return <ZbsConfigActionShell> zbsValidateObject({
-            type: zbsValidateExactString("shell"),
-            commands: zbsValidateRequiredStringList,
-            ...CommonObject,
-        })(value, context);
+        return zbsValidateConfigActionShell(value, context);
     }
     else {
         context.errors.push(
@@ -511,25 +486,166 @@ export function zbsValidateConfigActionInline(
     }
 }
 
-export function zbsValidateConfigTarget(
+export function zbsValidateConfigActionCompile(
     value: any, context: ZbsValidateContext
-): ZbsConfigTarget {
-    return <ZbsConfigTarget> zbsValidateObject({
-        name: zbsValidateRequiredString,
-        env: zbsValidateEnv,
-        cwd: zbsValidateString,
+) {
+    return <ZbsConfigActionCompile> zbsValidateObject({
+        type: zbsValidateExactString("compile"),
         incremental: zbsValidateBoolean,
-        system: zbsValidateString,
         compiler: zbsValidateString,
         compileArgs: zbsValidateStringList,
         includePaths: zbsValidateStringList,
+        sourcePaths: zbsValidateStringList,
+        rebuildAll: zbsValidateBoolean,
+        rebuildSourcePaths: zbsValidateStringList,
+        outputPath: zbsValidateRequiredString,
+        ...ZbsValidateConfigActionCommonObject,
+    })(value, context);
+}
+
+export function zbsValidateConfigActionCopy(
+    value: any, context: ZbsValidateContext
+) {
+    const action = <ZbsConfigActionCopy> zbsValidateObject({
+        type: zbsValidateExactString("copy"),
+        copyPath: zbsValidateString,
+        copyPaths: zbsValidateStringList,
+        copyPathsBase: zbsValidateString,
+        outputPath: zbsValidateRequiredString,
+        ...ZbsValidateConfigActionCommonObject,
+    })(value, context);
+    if(!!action.copyPath === !!action.copyPaths) {
+        context.errors.push(
+            `At ${context.path}: Copy action must have either ` +
+            `a "copyPath" or "copyPaths" string, but not both.`
+        );
+    }
+    if(action.copyPaths && !action.copyPathsBase) {
+        context.errors.push(
+            `At ${context.path}: If "copyPaths" is defined ` +
+            `for a copy action, then "copyPathsBase" must ` +
+            `also be defined.`
+        );
+    }
+    return action;
+}
+
+export function zbsValidateConfigActionExtern(
+    value: any, context: ZbsValidateContext
+) {
+    const action = <ZbsConfigActionExtern> zbsValidateObject({
+        type: zbsValidateExactString("extern"),
+        acquireActions: zbsValidateRequiredDefinedList(
+            zbsValidateRequiredConfigActionStringOrInline
+        ),
+        nextActionAcquired: zbsValidateConfigActionStringOrInline,
+        externRequirements: (
+            zbsValidateRequiredDefinedList<any>(
+                zbsValidateObject({
+                    externName: zbsValidateRequiredString,
+                    externPath: zbsValidateRequiredString,
+                    acquirePath: zbsValidateRequiredString,
+                    cache: zbsValidateBoolean,
+                })
+            )
+        ),
+        cache: zbsValidateBoolean,
+        ...ZbsValidateConfigActionCommonObject,
+    })(value, context);
+    const requirementExternNames = new Set();
+    for(const requirement of action.externRequirements) {
+        if(requirementExternNames.has(requirement.externName)) {
+            context.errors.push(
+                `At ${context.path}.externRequirements: ` +
+                `Each requirement object in the list must ` +
+                `have a unique "externName" string.`
+            );
+        }
+        requirementExternNames.add(requirement.externName);
+    }
+    return action;
+}
+
+export function zbsValidateConfigActionExtract(
+    value: any, context: ZbsValidateContext
+) {
+    return <ZbsConfigActionExtract> zbsValidateObject({
+        type: zbsValidateExactString("extract"),
+        archivePath: zbsValidateRequiredString,
+        outputPath: zbsValidateRequiredString,
+        format: zbsValidateString,
+        ...ZbsValidateConfigActionCommonObject,
+    })(value, context);
+}
+
+export function zbsValidateConfigActionFetch(
+    value: any, context: ZbsValidateContext
+) {
+    return <ZbsConfigActionFetch> zbsValidateObject({
+        type: zbsValidateExactString("fetch"),
+        uri: zbsValidateRequiredString,
+        outputPath: zbsValidateRequiredString,
+        cache: zbsValidateBoolean,
+        overwrite: zbsValidateBoolean,
+        httpMethod: zbsValidateString,
+        httpHeaders: zbsValidateEnv,
+        ftpUsername: zbsValidateString,
+        ftpPassword: zbsValidateString,
+        timeoutSeconds: zbsValidateFiniteNumber,
+        ...ZbsValidateConfigActionCommonObject,
+    })(value, context);
+}
+
+export function zbsValidateConfigActionLink(
+    value: any, context: ZbsValidateContext
+) {
+    const action = <ZbsConfigActionLink> zbsValidateObject({
+        type: zbsValidateExactString("link"),
         linker: zbsValidateString,
         linkArgs: zbsValidateStringList,
         libraryPaths: zbsValidateStringList,
         libraries: zbsValidateStringList,
-        // TODO: Also accept action names
-        actions: zbsValidateRequiredDefinedList<ZbsConfigAction | string>(
-            zbsValidateRequiredConfigActionStringOrInline
-        ),
+        objectPaths: zbsValidateStringList,
+        outputPath: zbsValidateString,
+        outputBinaryName: zbsValidateString,
+        ...ZbsValidateConfigActionCommonObject,
+    })(value, context);
+    if(!action.outputPath && !action.outputBinaryName) {
+        context.errors.push(
+            `At ${context.path}: Link action ` +
+            `must specify either an "outputPath" or ` +
+            `an "outputBinaryName" attribute.`
+        );
+    }
+    return action;
+}
+
+export function zbsValidateConfigActionMake(
+    value: any, context: ZbsValidateContext
+) {
+    return <ZbsConfigActionRemove> zbsValidateObject({
+        type: zbsValidateExactString("make"),
+        makeArgs: zbsValidateStringList,
+        ...ZbsValidateConfigActionCommonObject,
+    })(value, context);
+}
+
+export function zbsValidateConfigActionRemove(
+    value: any, context: ZbsValidateContext
+) {
+    return <ZbsConfigActionRemove> zbsValidateObject({
+        type: zbsValidateExactString("remove"),
+        removePaths: zbsValidateRequiredStringList,
+        ...ZbsValidateConfigActionCommonObject,
+    })(value, context);
+}
+
+export function zbsValidateConfigActionShell(
+    value: any, context: ZbsValidateContext
+) {
+    return <ZbsConfigActionShell> zbsValidateObject({
+        type: zbsValidateExactString("shell"),
+        commands: zbsValidateRequiredStringList,
+        ...ZbsValidateConfigActionCommonObject,
     })(value, context);
 }

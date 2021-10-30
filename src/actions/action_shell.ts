@@ -3,7 +3,6 @@ import {ZbsProjectActionRunnerOptions} from "../action_runner";
 import {ZbsConfigAction} from "../config/config_types";
 import {ZbsConfigActionShell} from "../config/config_types";
 import {zbsIsActionShell} from "../config/config_types";
-import {zbsProcessExec} from "../util/util_process";
 
 export class ZbsProjectActionShellRunner extends ZbsProjectActionRunner {
     static matchActionConfig(action: ZbsConfigAction): boolean {
@@ -26,18 +25,9 @@ export class ZbsProjectActionShellRunner extends ZbsProjectActionRunner {
             if(!command) {
                 continue;
             }
-            if(this.project.dryRun) {
-                this.logger.info("Dry-run: $", command);
-                continue;
-            }
-            this.logger.info("$", command);
-            const statusCode = await zbsProcessExec(command, {
+            const statusCode = await this.project.processExec(command, {
                 cwd: cwd,
                 env: Object.assign({}, this.project.env, env),
-                shell: true,
-            }, {
-                stdout: (data) => this.logger.info(data.toString()),
-                stderr: (data) => this.logger.info(data.toString()),
             });
             if(statusCode !== 0) {
                 this.fail(`Command failed: Status code ${statusCode}`);

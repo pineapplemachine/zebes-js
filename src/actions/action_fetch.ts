@@ -59,9 +59,7 @@ export class ZbsProjectActionFetchRunner extends ZbsProjectActionRunner {
                 reject(error);
             });
             // Pipe request to output file stream
-            fs.mkdirSync(path.dirname(destPath), {
-                recursive: true,
-            });
+            await this.project.fsMkdir(path.dirname(destPath));
             const partialDestPath: string = destPath + ".part";
             const outputStream = fs.createWriteStream(partialDestPath);
             outputStream.on("finish", () => {
@@ -73,6 +71,10 @@ export class ZbsProjectActionFetchRunner extends ZbsProjectActionRunner {
             });
             (<any> response.data).pipe(outputStream);
         });
+    }
+    
+    getCache() {
+        return this.project.home.cache("fetch");
     }
     
     async runType(): Promise<void> {
@@ -99,18 +101,17 @@ export class ZbsProjectActionFetchRunner extends ZbsProjectActionRunner {
         }
         if(this.action.cache) {
             const cachedDownload = (
-                await this.project.home.getCachedDownload(this.action.uri)
+                await this.getCache().getFile(this.action.uri)
             );
             if(cachedDownload && fs.existsSync(cachedDownload.path)) {
                 const cachedTime = new Date(cachedDownload.timestamp);
                 this.logger.info(
                     "Copying fetched file from Zebes downloads cache. " +
-                    `(Fetched ${cachedTime.toISOString()}.)`
+                    `(Fetched ${cachedTime.toISOString()})`
                 );
-                this.logger.trace(
-                    "Copying from cached file path:", cachedDownload.path
+                await this.project.fsCopyFile(
+                    cachedDownload.path, outputPath
                 );
-                fs.copyFileSync(cachedDownload.path, outputPath);
                 return;
             }
             else if(cachedDownload) {
@@ -124,6 +125,9 @@ export class ZbsProjectActionFetchRunner extends ZbsProjectActionRunner {
         const urlProtocol = urlObject.protocol;
         // TODO: More protocols. file:// ftp:// sftp://
         this.logger.info("Fetching URI:", this.action.uri);
+        if(this.project.dryRun) {
+            return;
+        }
         let tries: number = 0;
         const retries: number = (this.action.retries || 0);
         while(tries <= retries) {
@@ -147,14 +151,13 @@ export class ZbsProjectActionFetchRunner extends ZbsProjectActionRunner {
         }
         if(this.action.cache) {
             this.logger.info("Copying fetched file to Zebes downloads cache.");
-            const cachePath = (
-                await this.project.home.addCachedDownload(this.action.uri)
+            const cachePath = await this.getCache().addFile(
+                this.action.uri,
+                path.basename(new URL(this.action.uri).pathname),
             );
-            this.logger.trace("Copying to cached file path:", cachePath);
-            fs.mkdirSync(path.dirname(cachePath), {
-                recursive: true,
-            });
-            fs.copyFileSync(outputPath, cachePath);
+            this.logger.debug("Copying to cache path:", cachePath);
+            await this.project.fsMkdir(path.dirname(cachePath));
+            await this.project.fsCopyFile(outputPath, cachePath);
         }
     }
 }

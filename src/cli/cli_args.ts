@@ -113,7 +113,7 @@ function zbsArgParserAddRunTargetArgs(parser: ArgumentParser) {
     });
     parser.add_argument("-l", "--parallel", {
         type: "int",
-        help: "The greatest number of tasks that should run simultaneously",
+        help: "The greatest number of tasks that should run simultaneously.",
     });
     parser.add_argument("-r", "--rebuild", {
         action: "store_true",
@@ -130,6 +130,10 @@ function zbsArgParserAddRunTargetArgs(parser: ArgumentParser) {
     parser.add_argument("--allow-action-cycles", {
         action: "store_true",
         help: "Continue running upon encountering a cyclic action.",
+    });
+    parser.add_argument("--run-max-actions", {
+        type: "int",
+        help: "Abort execution if running more than this many actions.",
     });
     parser.add_argument("--dry-run", {
         action: "store_true",

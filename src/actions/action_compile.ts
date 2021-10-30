@@ -12,7 +12,6 @@ import {ZbsConfigActionCompile} from "../config/config_types";
 import {zbsIsActionCompile} from "../config/config_types";
 import {ZbsDependencyMap} from "../incremental";
 import {ZbsFilesModified} from "../incremental";
-import {zbsProcessSpawn} from "../util/util_process";
 import {zbsPromiseAllLimitSettle} from "../util/util_promise";
 
 export class ZbsProjectActionCompileRunner extends ZbsProjectActionRunner {
@@ -96,7 +95,7 @@ export class ZbsProjectActionCompileRunner extends ZbsProjectActionRunner {
             this.action.outputPath, ".zebes/deps.json.gz"
         );
         const dependencies = new ZbsDependencyMap(
-            cwd, this.project.env, this.logger
+            cwd, this.project.env, this.project
         );
         const filesModified = new ZbsFilesModified(cwd, this.logger);
         if(incremental) {
@@ -154,30 +153,21 @@ export class ZbsProjectActionCompileRunner extends ZbsProjectActionRunner {
                 this.getCompileOutputArg() + objectPath,
             ];
             this.logger.info("Compiling source:", buildPath);
-            if(this.project.dryRun) {
-                this.logger.info("Dry-run: $", compiler, ...args);
+            await this.project.fsMkdir(
+                path.dirname(path.resolve(cwd, objectPath))
+            );
+            const statusCode = await this.project.processSpawn(compiler, args, {
+                cwd: cwd,
+                env: Object.assign({}, this.project.env, env),
+                shell: true,
+            });
+            if(statusCode !== 0) {
+                this.fail(
+                    `Compilation failed with status code ${statusCode}: ` +
+                    buildPath
+                );
             }
-            else {
-                this.logger.info("$", compiler, ...args);
-                fs.mkdirSync(path.dirname(path.resolve(cwd, objectPath)), {
-                    recursive: true,
-                });
-                const statusCode = await zbsProcessSpawn(compiler, args, {
-                    cwd: cwd,
-                    env: Object.assign({}, this.project.env, env),
-                    shell: true,
-                }, {
-                    stdout: (data) => this.logger.info(data.toString()),
-                    stderr: (data) => this.logger.info(data.toString()),
-                });
-                if(statusCode !== 0) {
-                    this.fail(
-                        `Compilation failed with status code ${statusCode}: ` +
-                        buildPath
-                    );
-                }
-            }
-            if(incremental) {
+            if(incremental && !this.project.dryRun) {
                 await dependencies.update({
                     sourcePath: buildPath,
                     dryRun: this.project.dryRun,
@@ -207,9 +197,7 @@ export class ZbsProjectActionCompileRunner extends ZbsProjectActionRunner {
         );
         if(incremental && !this.project.dryRun && dependencies.anyUpdate) {
             this.logger.debug("Writing dependencies data:", depsPath);
-            if(!fs.existsSync(path.dirname(depsPath))){
-                fs.mkdirSync(path.dirname(depsPath), {recursive: true});
-            }
+            await this.project.fsMkdir(path.dirname(depsPath));
             await dependencies.write(depsPath);
         }
     }

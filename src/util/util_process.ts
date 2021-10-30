@@ -2,10 +2,10 @@ import * as child_process from "child_process";
 
 export function zbsProcessExec(
     command: string,
-    options: any,
+    options: child_process.ExecOptions,
     callbacks?: {
-        stdout?: (data: Buffer) => any
-        stderr?: (data: Buffer) => any
+        stdout?: (data: Buffer) => any,
+        stderr?: (data: Buffer) => any,
     }
 ): Promise<number> {
     return new Promise((resolve, reject) => {
@@ -23,10 +23,10 @@ export function zbsProcessExec(
 export function zbsProcessSpawn(
     command: string,
     args: string[],
-    options: any,
+    options: child_process.SpawnOptions,
     callbacks?: {
-        stdout?: (data: Buffer) => any
-        stderr?: (data: Buffer) => any
+        stdout?: (data: Buffer) => any,
+        stderr?: (data: Buffer) => any,
     }
 ): Promise<number> {
     return new Promise((resolve, reject) => {

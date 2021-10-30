@@ -128,6 +128,9 @@ export class ZbsProjectActionExtractRunner extends ZbsProjectActionRunner {
             "Determined archive format for extraction:",
             () => JSON.stringify(archiveFormat),
         );
+        if(this.project.dryRun) {
+            return;
+        }
         if(archiveFormat === "zip") {
             await this.extractArchiveZip(archivePath, outputPath);
         }

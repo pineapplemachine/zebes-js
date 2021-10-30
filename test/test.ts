@@ -71,6 +71,15 @@ canary.test(`c/bottles - Build multi source C program`, async function() {
     assert(result.stdout.indexOf("no more bottles of beer on the wall") > 0);
 });
 
+canary.test(`c/bottles - Build multi source C program (Dry run)`, async function() {
+    const helloDir = cloneMaterials("c/bottles");
+    await zebes(helloDir, ["init", "c", "toml"]);
+    assert(fs.existsSync(path.join(helloDir, "zebes.toml")));
+    await zebes(helloDir, ["build", "--dry-run"]);
+    assert(!fs.existsSync(path.join(helloDir, "bin")));
+    assert(!fs.existsSync(path.join(helloDir, "build")));
+});
+
 canary.test(`cpp/hello - Build trivial C++ program`, async function() {
     const helloDir = cloneMaterials("cpp/hello");
     await zebes(helloDir, ["init", "cpp", "yaml"]);

@@ -107,3 +107,6 @@ dist
 dist/**
 test/run/**
 test/**/downloads/**
+test/**/include/**
+test/**/lib/**
+test/**/build/**

@@ -13,15 +13,9 @@ import {zbsGzipJsonWrite} from "./util/util_json_gzip";
 export const ZbsHomeConfigPath: string = (
     "config.json"
 );
-export const ZbsHomeDownloadsCacheFilesPath: string = (
-    "downloads_cache"
-);
-export const ZbsHomeDownloadsCacheDataPath: string = (
-    "downloads_cache.json.gz"
-);
 
-export interface ZbsHomeDownloadsCache {
-    [uri: string]: {
+export interface ZbsHomeFileCacheData {
+    [key: string]: {
         name: string,
         timestamp: number,
     };
@@ -62,6 +56,10 @@ const ZbsHomeConfigNumbers: ZbsHomeConfigMap = {
         arg: "parallel",
         env: "ZEBES_PARALLEL",
     },
+    runMaxActions: {
+        arg: "run_max_actions",
+        env: "ZEBES_RUN_MAX_ACTIONS",
+    },
 };
 
 const ZbsHomeConfigStrings: ZbsHomeConfigMap = {
@@ -71,12 +69,123 @@ const ZbsHomeConfigStrings: ZbsHomeConfigMap = {
     },
 };
 
+/**
+ * This is a helper class for handling Zebes file caches.
+ *
+ * Zebes provides the option to cache things like remote file downloads
+ * or external dependency builds so that they can be acquired quickly and
+ * without an internet connection if any Zebes project needs them again.
+ */
+export class ZbsHomeFileCache {
+    /** Path to Zebes home directory. (e.g. "~/.zebes") */
+    homePath: string;
+    /** Unique identifying name for this cache. (e.g. "downloads") */
+    name: string;
+    /** Handle to a logger instance. */
+    logger: ZbsLogger;
+    /** Data object containing information about cached files. */
+    data: ZbsHomeFileCacheData | undefined;
+    /** Track whether the cache data object has uncommitted changes. */
+    modified: boolean;
+    
+    constructor(homePath: string, name: string, logger: ZbsLogger) {
+        this.homePath = homePath;
+        this.name = name;
+        this.logger = logger;
+        this.data = undefined;
+        this.modified = false;
+    }
+    
+    async commit() {
+        if(this.modified && this.data) {
+            const cacheDataPath = path.join(
+                this.homePath, "cache", this.name + ".json.gz"
+            );
+            this.logger.debug(
+                "Committing Zebes cache data to path:", cacheDataPath
+            );
+            await fs.mkdirSync(
+                path.dirname(cacheDataPath), {recursive: true}
+            );
+            await zbsGzipJsonWrite(cacheDataPath, {
+                version: 1,
+                name: this.name,
+                timestamp: new Date().getTime(),
+                data: this.data,
+            })
+        }
+        this.modified = false;
+    }
+    
+    async getData(): Promise<ZbsHomeFileCacheData> {
+        if(!this.data) {
+            const cacheDataPath = path.join(
+                this.homePath, "cache", this.name + ".json.gz"
+            );
+            if(fs.existsSync(cacheDataPath)) {
+                this.logger.debug(
+                    "Reading Zebes cache data:", cacheDataPath
+                );
+                try {
+                    const data = await zbsGzipJsonRead(cacheDataPath);
+                    this.data = data.data;
+                }
+                catch(error) {
+                    this.logger.warn(error);
+                }
+                if(!this.data || typeof(this.data) !== "object") {
+                    this.logger.warn(
+                        "Malformed Zebes cache data:", cacheDataPath
+                    );
+                    this.data = {};
+                }
+            }
+            else {
+                this.data = {};
+            }
+        }
+        return <ZbsHomeFileCacheData> this.data;
+    }
+    
+    async getFile(key: string) {
+        const data = await this.getData();
+        if(data[key]) {
+            return {
+                name: data[key].name,
+                timestamp: data[key].timestamp,
+                path: path.join(
+                    this.homePath, "cache", this.name, data[key].name
+                ),
+            };
+        }
+        else {
+            return undefined;
+        }
+    }
+    
+    async addFile(key: string, fileName?: string): Promise<string> {
+        const data = await this.getData();
+        const now = new Date();
+        const timestamp = now.toISOString().replace(/[^0-9]/g, "");
+        const name = (fileName || key).slice(0, 48).replace(
+            /[^a-zA-Z0-9_\-\.]/g, "_"
+        );
+        data[key] = {
+            name: timestamp.slice(0, timestamp.length - 3) + "_" + name,
+            timestamp: now.getTime(),
+        };
+        this.modified = true;
+        return path.join(
+            this.homePath, "cache", this.name, data[key].name
+        );
+    }
+}
+
 export class ZbsHome {
     path: string;
     logger: ZbsLogger;
     config: ZbsConfigHome;
-    downloadsCache?: ZbsHomeDownloadsCache | undefined;
-    downloadsCacheModified: boolean = false;
+    caches: {[name: string]: ZbsHomeFileCache};
     
     constructor(
         logger: ZbsLogger,
@@ -92,6 +201,7 @@ export class ZbsHome {
             "Initializing with Zebes home directory:", this.path
         );
         this.config = {};
+        this.caches = {};
     }
     
     async loadConfig(
@@ -103,9 +213,9 @@ export class ZbsHome {
             this.logger.debug("Reading Zebes config from path", configPath);
             const configJson = fs.readFileSync(configPath, "utf-8");
             this.config = JSON.parse(configJson);
-            this.logger.trace("Zebes home config file:\n",
-                () => zbsValueToString(this.config)
-            );
+            this.logger.trace(() => ("Zebes home config file contents:\n" +
+                zbsValueToString(this.config, "  ")
+            ));
         }
         else {
             this.config = {};
@@ -183,78 +293,30 @@ export class ZbsHome {
                 ));
             }
         }
-        this.logger.trace("Zebes final home config:\n",
-            () => zbsValueToString(this.config)
-        );
+        // runMaxActions, if not defined anywhere, should default to a
+        // moderately large number.
+        if(this.config.runMaxActions === undefined) {
+            this.config.runMaxActions = 1000;
+        }
+        // All done
+        this.logger.trace(() => ("Zebes final home config:\n" +
+            zbsValueToString(this.config, "  ")
+        ));
     }
     
-    async commit() {
-        if(this.downloadsCacheModified) {
-            const cacheDataPath = path.join(
-                this.path, ZbsHomeDownloadsCacheDataPath
+    cache(name: string): ZbsHomeFileCache {
+        if(!this.caches[name]) {
+            this.caches[name] = new ZbsHomeFileCache(
+                this.path, name, this.logger
             );
-            this.logger.trace(
-                "Committing downloads cache data to path:", cacheDataPath
-            );
-            await zbsGzipJsonWrite(cacheDataPath, {
-                version: 1,
-                timestamp: new Date().getTime(),
-                cache: this.downloadsCache,
-            })
         }
+        return <ZbsHomeFileCache> this.caches[name];
     }
     
-    async getDownloadsCache(): Promise<ZbsHomeDownloadsCache> {
-        if(!this.downloadsCache) {
-            const cacheDataPath = path.join(
-                this.path, ZbsHomeDownloadsCacheDataPath
-            );
-            if(fs.existsSync(cacheDataPath)) {
-                const data = await zbsGzipJsonRead(cacheDataPath);
-                this.downloadsCache = data.cache;
-            }
-            else {
-                this.downloadsCache = {};
-            }
+    async commitCaches() {
+        this.logger.trace("Comitting changes to Zebes file caches.");
+        for(const name in this.caches) {
+            await this.caches[name].commit();
         }
-        return <ZbsHomeDownloadsCache> this.downloadsCache;
-    }
-    
-    async getCachedDownload(uri: string) {
-        const cache = await this.getDownloadsCache();
-        if(cache[uri]) {
-            return {
-                name: cache[uri].name,
-                timestamp: cache[uri].timestamp,
-                path: path.join(
-                    this.path,
-                    ZbsHomeDownloadsCacheFilesPath,
-                    cache[uri].name,
-                ),
-            };
-        }
-        else {
-            return undefined;
-        }
-    }
-    
-    async addCachedDownload(uri: string): Promise<string> {
-        const cache = await this.getDownloadsCache();
-        const now = new Date();
-        const url = new URL(uri);
-        const timestamp = now.toISOString().replace(/[^0-9]/g, "");
-        const basename = path.basename(url.pathname).slice(0, 64).replace(
-            /[^a-zA-Z0-9_\-\.]/g, "_"
-        );
-        cache[uri] = {
-            name: timestamp.slice(0, timestamp.length - 3) + "_" + basename,
-            timestamp: now.getTime(),
-        };
-        this.downloadsCacheModified = true;
-        return path.join(
-            this.path,
-            ZbsHomeDownloadsCacheFilesPath,
-            cache[uri].name,
-        );
     }
 }

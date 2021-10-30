@@ -23,7 +23,7 @@ export class ZbsLogger {
             if(this.currentProgress) {
                 this.currentProgress.interrupt();
             }
-            console.log(message, ...rest.map(
+            console.log(...[message, ...rest].map(
                 (value) => (typeof(value) === "function" ? value() : value)
             ));
         }

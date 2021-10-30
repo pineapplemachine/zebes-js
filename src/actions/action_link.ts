@@ -8,7 +8,6 @@ import {ZbsProjectActionRunnerOptions} from "../action_runner";
 import {ZbsConfigAction} from "../config/config_types";
 import {ZbsConfigActionLink} from "../config/config_types";
 import {zbsIsActionLink} from "../config/config_types";
-import {zbsProcessSpawn} from "../util/util_process";
 
 export class ZbsProjectActionLinkRunner extends ZbsProjectActionRunner {
     static matchActionConfig(action: ZbsConfigAction): boolean {
@@ -87,22 +86,14 @@ export class ZbsProjectActionLinkRunner extends ZbsProjectActionRunner {
         ));
         args.push(...linkArgs);
         args.push(this.getLinkOutputArg() + outputPath);
-        fs.mkdirSync(path.dirname(path.resolve(cwd, outputPath)), {
-            recursive: true,
-        });
+        await this.project.fsMkdir(
+            path.dirname(path.resolve(cwd, outputPath))
+        );
         this.logger.info("Linking:", outputPath);
-        if(this.project.dryRun) {
-            this.logger.info("Dry-run: $", linker, ...args);
-            return;
-        }
-        this.logger.info("$", linker, ...args);
-        const statusCode = await zbsProcessSpawn(linker, args, {
+        const statusCode = await this.project.processSpawn(linker, args, {
             cwd: cwd,
             env: Object.assign({}, this.project.env, env),
             shell: true,
-        }, {
-            stdout: (data) => this.logger.info(data.toString()),
-            stderr: (data) => this.logger.info(data.toString()),
         });
         if(statusCode !== 0) {
             this.fail(`Linking failed with status code ${statusCode}`);

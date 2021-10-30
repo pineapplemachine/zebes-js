@@ -20,17 +20,15 @@ import {zbsValueToString} from "../to_string";
 
 /**
 
-immediate todo:
-1. inflate the downloaded zip file
-2. run shell commands in the extracted dir to compile raylib
-3. copy raylib.a to the lib/ directory
-4. cache raylib.a (with version information too)
+IMMEDIATE TODO:
+Copy files with glob pattern
+- use this to copy only the needed headers out of raylib sources
+
+
 
 Fix incremental getDependencies method
 
-zip - https://www.npmjs.com/package/extract-zip (check deps)
 7z - use command line 7z binary
-tar - https://www.npmjs.com/package/untar
 rar - use unrar binary
 
 TODO: add some things
@@ -45,6 +43,8 @@ fetch FTP and SFTP support
 extract 7z support
 extract gz support
 extract rar support
+fix logger spacing
+option to use symlinks to cache instead of copying
 action type: make - e.g. dispatch to mingw32-make on windows
 --no-cache CLI arg to fetch and ignore cache
 zebes refresh to clear download cache etc
