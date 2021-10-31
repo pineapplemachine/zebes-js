@@ -28,6 +28,13 @@ export class ZbsProjectActionExternRunner extends ZbsProjectActionRunner {
         return this.project.home.cache("extern");
     }
     
+    get action(): ZbsConfigActionExtern {
+        if(!zbsIsActionExtern(this.actionConfig)) {
+            throw new Error("Internal error: Action type inconsistency.");
+        }
+        return this.actionConfig;
+    }
+    
     /**
      * This is a two-part action.
      *
@@ -49,10 +56,6 @@ export class ZbsProjectActionExternRunner extends ZbsProjectActionRunner {
      * failure.
      */
     async runType(): Promise<void> {
-        this.logger.trace("Running extern action.");
-        if(!zbsIsActionExtern(this.action)) {
-            throw new Error("Internal error: Action type inconsistency.");
-        }
         if(this.failed || this.acquired) {
             return;
         }
@@ -66,9 +69,6 @@ export class ZbsProjectActionExternRunner extends ZbsProjectActionRunner {
     
     async runPreExtern(): Promise<void> {
         this.logger.trace(`Running extern action "pre" step.`);
-        if(!zbsIsActionExtern(this.action)) {
-            throw new Error("Internal error: Action type inconsistency.");
-        }
         if(!this.action.externRequirements.length) {
             this.logger.warn("Extern action has no requirements.");
             this.acquired = true;
@@ -133,9 +133,6 @@ export class ZbsProjectActionExternRunner extends ZbsProjectActionRunner {
     
     async runPostExtern() {
         this.logger.trace(`Running extern action "post" step.`);
-        if(!zbsIsActionExtern(this.action)) {
-            throw new Error("Internal error: Action type inconsistency.");
-        }
         const cwd = this.getConfigCwd();
         if(this.project.dryRun) {
             this.logger.info(
@@ -197,9 +194,7 @@ export class ZbsProjectActionExternRunner extends ZbsProjectActionRunner {
     async getNextActions(): Promise<ZbsProjectRunnerNextAction[] | undefined> {
         // Run acquireActions to acquire the dependency
         if(this.needsAcquire && !this.acquired && !this.failed) {
-            const acquireActions = (
-                (<ZbsConfigActionExtern> this.action).acquireActions
-            );
+            const acquireActions = this.action.acquireActions;
             const nextActions = acquireActions.map((action, i) => ({
                 action: action,
                 continueActionAfter: (
@@ -211,9 +206,7 @@ export class ZbsProjectActionExternRunner extends ZbsProjectActionRunner {
         // Run nextActionAcquired and then normal nextAction, etc.
         else if(this.needsAcquire && this.acquired && !this.failed) {
             const nextActions = (await super.getNextActions()) || [];
-            const nextActionAcquired = (
-                (<ZbsConfigActionExtern> this.action).nextActionAcquired
-            );
+            const nextActionAcquired = this.action.nextActionAcquired;
             if(nextActionAcquired) {
                 nextActions.unshift({action: nextActionAcquired});
             }

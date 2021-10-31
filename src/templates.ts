@@ -39,6 +39,7 @@ export const zbsInitProjectTemplateC = {
                 {
                     "type": "remove",
                     "removePaths": ["build/*", "bin/*"],
+                    "prompt": true
                 }
             ]
         }
@@ -81,6 +82,7 @@ export const zbsInitProjectTemplateCpp = {
                 {
                     "type": "remove",
                     "removePaths": ["build/*", "bin/*"],
+                    "prompt": true
                 }
             ]
         }
@@ -131,6 +133,7 @@ export const zbsInitProjectTemplateD = {
                 {
                     "type": "remove",
                     "removePaths": ["build/*", "bin/*"],
+                    "prompt": true
                 }
             ]
         }

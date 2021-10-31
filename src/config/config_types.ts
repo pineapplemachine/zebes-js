@@ -138,6 +138,8 @@ export interface ZbsConfigActionCopy extends ZbsConfigActionCommon {
     copyPathsBase?: string;
     /** Destination for copied files. */
     outputPath: string;
+    /** Overwrite files at the destination? */
+    overwrite?: boolean;
 }
 
 export interface ZbsConfigActionExternRequirement {
@@ -226,11 +228,30 @@ export interface ZbsConfigActionMake extends ZbsConfigActionCommon {
     makeArgs?: string[];
 }
 
+/** Action: Move or rename files. */
+export interface ZbsConfigActionMove extends ZbsConfigActionCommon {
+    type: "move";
+    /** Move an exact path. */
+    movePath?: string;
+    /** Move paths matching each glob pattern. */
+    movePaths?: string[];
+    /** Paths in movePaths are relative to this directory. */
+    movePathsBase?: string;
+    /** Destination for moved files. */
+    outputPath: string;
+    /** Overwrite files at the destination? */
+    overwrite?: boolean;
+}
+
 /** Action: Remove files. */
 export interface ZbsConfigActionRemove extends ZbsConfigActionCommon {
     type: "remove";
+    /** Remove exact path. */
+    removePath?: string;
     /** Remove paths matching each glob pattern. */
-    removePaths: string[];
+    removePaths?: string[];
+    /** Use interactive CLI prompt to confirm removals. */
+    prompt?: boolean;
 }
 
 /** Action: Execute arbitrary shell commands. */
@@ -249,6 +270,7 @@ export type ZbsConfigAction = (
     ZbsConfigActionFetch |
     ZbsConfigActionLink |
     ZbsConfigActionMake |
+    ZbsConfigActionMove |
     ZbsConfigActionRemove |
     ZbsConfigActionShell
 );
@@ -262,6 +284,7 @@ export const ZbsConfigActionTypes: string[] = [
     "fetch",
     "link",
     "make",
+    "move",
     "remove",
     "shell",
 ];
@@ -275,6 +298,7 @@ export type ZbsConfigActionType = (
     "fetch" |
     "link" |
     "make" |
+    "move" |
     "remove" |
     "shell"
 );
@@ -369,6 +393,15 @@ export function zbsIsActionMake(
 ): value is ZbsConfigActionMake {
     return value && typeof(value) === "object" && (
         value.type === "make"
+    );
+}
+
+/** Check if an action's type string is "move". */
+export function zbsIsActionMove(
+    value: ZbsConfigAction
+): value is ZbsConfigActionMove {
+    return value && typeof(value) === "object" && (
+        value.type === "move"
     );
 }
 

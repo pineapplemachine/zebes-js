@@ -23,6 +23,13 @@ export class ZbsProjectActionCompileRunner extends ZbsProjectActionRunner {
         super(options);
     }
     
+    get action(): ZbsConfigActionCompile {
+        if(!zbsIsActionCompile(this.actionConfig)) {
+            throw new Error("Internal error: Action type inconsistency.");
+        }
+        return this.actionConfig;
+    }
+    
     checkRebuildNeeded(
         dependencies: ZbsDependencyMap,
         filesModified: ZbsFilesModified,
@@ -68,10 +75,6 @@ export class ZbsProjectActionCompileRunner extends ZbsProjectActionRunner {
     }
     
     async runType(): Promise<void> {
-        this.logger.trace("Running compile action.");
-        if(!zbsIsActionCompile(this.action)) {
-            throw new Error("Internal error: Action type inconsistency.");
-        }
         const cwd = this.getConfigCwd();
         const env = this.getConfigObjectAdditive<string>("env");
         const incremental = !!this.getConfig<boolean>("incremental");
@@ -136,9 +139,6 @@ export class ZbsProjectActionCompileRunner extends ZbsProjectActionRunner {
             }
         }
         const build = async (buildPath: string) => {
-            if(!zbsIsActionCompile(this.action)) {
-                throw new Error("Internal error: Action type inconsistency.");
-            }
             const objectPath = path.join(
                 this.action.outputPath,
                 buildPath + this.getCompileOutputExt(),

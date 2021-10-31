@@ -6,6 +6,7 @@ import {ZbsConfigActionExternRequirement} from "./config_types";
 import {ZbsConfigActionExtract} from "./config_types";
 import {ZbsConfigActionLink} from "./config_types";
 import {ZbsConfigActionMake} from "./config_types";
+import {ZbsConfigActionMove} from "./config_types";
 import {ZbsConfigActionRemove} from "./config_types";
 import {ZbsConfigActionShell} from "./config_types";
 import {ZbsConfigActionTypes} from "./config_types";
@@ -469,6 +470,9 @@ export function zbsValidateConfigActionInline(
     else if(value.type === "make") {
         return zbsValidateConfigActionMake(value, context);
     }
+    else if(value.type === "move") {
+        return zbsValidateConfigActionMove(value, context);
+    }
     else if(value.type === "remove") {
         return zbsValidateConfigActionRemove(value, context);
     }
@@ -512,6 +516,7 @@ export function zbsValidateConfigActionCopy(
         copyPaths: zbsValidateStringList,
         copyPathsBase: zbsValidateString,
         outputPath: zbsValidateRequiredString,
+        overwrite: zbsValidateBoolean,
         ...ZbsValidateConfigActionCommonObject,
     })(value, context);
     if(!!action.copyPath === !!action.copyPaths) {
@@ -630,14 +635,51 @@ export function zbsValidateConfigActionMake(
     })(value, context);
 }
 
+export function zbsValidateConfigActionMove(
+    value: any, context: ZbsValidateContext
+) {
+    const action = <ZbsConfigActionMove> zbsValidateObject({
+        type: zbsValidateExactString("move"),
+        movePath: zbsValidateString,
+        movePaths: zbsValidateStringList,
+        movePathsBase: zbsValidateString,
+        outputPath: zbsValidateRequiredString,
+        overwrite: zbsValidateBoolean,
+        ...ZbsValidateConfigActionCommonObject,
+    })(value, context);
+    if(!!action.movePath === !!action.movePaths) {
+        context.errors.push(
+            `At ${context.path}: Move action must have either ` +
+            `a "movePath" or "movePaths" string, but not both.`
+        );
+    }
+    if(action.movePaths && !action.movePathsBase) {
+        context.errors.push(
+            `At ${context.path}: If "movePaths" is defined ` +
+            `for a move action, then "movePathsBase" must ` +
+            `also be defined.`
+        );
+    }
+    return action;
+}
+
 export function zbsValidateConfigActionRemove(
     value: any, context: ZbsValidateContext
 ) {
-    return <ZbsConfigActionRemove> zbsValidateObject({
+    const action = <ZbsConfigActionRemove> zbsValidateObject({
         type: zbsValidateExactString("remove"),
-        removePaths: zbsValidateRequiredStringList,
+        removePath: zbsValidateString,
+        removePaths: zbsValidateStringList,
+        prompt: zbsValidateBoolean,
         ...ZbsValidateConfigActionCommonObject,
     })(value, context);
+    if(!!action.removePath === !!action.removePaths) {
+        context.errors.push(
+            `At ${context.path}: Remove action must have either ` +
+            `a "removePath" or "removePaths" string, but not both.`
+        );
+    }
+    return action;
 }
 
 export function zbsValidateConfigActionShell(

@@ -13,11 +13,14 @@ export class ZbsProjectActionShellRunner extends ZbsProjectActionRunner {
         super(options);
     }
     
-    async runType(): Promise<void> {
-        this.logger.trace("Running shell action.");
-        if(!zbsIsActionShell(this.action)) {
+    get action(): ZbsConfigActionShell {
+        if(!zbsIsActionShell(this.actionConfig)) {
             throw new Error("Internal error: Action type inconsistency.");
         }
+        return this.actionConfig;
+    }
+    
+    async runType(): Promise<void> {
         const cwd = this.getConfigCwd();
         const env = this.getConfigObjectAdditive<string>("env");
         this.logger.debug("Current working directory for shell action:", cwd);

@@ -131,13 +131,37 @@ export class ZbsProject {
         }
     }
     
-    async fsCopy(srcPath: string, destPath: string) {
+    async fsMove(srcPath: string, destPath: string, overwrite?: boolean) {
+        const prefix = this.dryRun ? "Dry-run: " : "";
+        this.logger.info(
+            prefix + "Moving from", srcPath, "to", destPath
+        );
+        if(!this.dryRun) {
+            fsExtra.moveSync(srcPath, destPath, {
+                overwrite: !!overwrite,
+            });
+        }
+    }
+    
+    async fsRemove(removePath: string) {
+        const prefix = this.dryRun ? "Dry-run: " : "";
+        this.logger.info(
+            prefix + "Removing path:", removePath
+        );
+        if(!this.dryRun) {
+            fsExtra.removeSync(removePath);
+        }
+    }
+    
+    async fsCopy(srcPath: string, destPath: string, overwrite?: boolean) {
         const prefix = this.dryRun ? "Dry-run: " : "";
         this.logger.info(
             prefix + "Copying from", srcPath, "to", destPath
         );
         if(!this.dryRun) {
-            fsExtra.copySync(srcPath, destPath);
+            fsExtra.copySync(srcPath, destPath, {
+                overwrite: !!overwrite,
+            });
         }
     }
     

@@ -20,11 +20,16 @@ export class ZbsProjectActionFetchRunner extends ZbsProjectActionRunner {
         super(options);
     }
     
+    get action(): ZbsConfigActionFetch {
+        if(!zbsIsActionFetch(this.actionConfig)) {
+            throw new Error("Internal error: Action type inconsistency.");
+        }
+        return this.actionConfig;
+    }
+    
     fetchHttp(destPath: string, urlObject: URL): Promise<void> {
+        this.logger.trace("Fetching HTTP/HTTPS.");
         return new Promise(async (resolve, reject) => {
-            if(!zbsIsActionFetch(this.action)) {
-                throw new Error("Internal error: Action type inconsistency.");
-            }
             // Issue the HTTP or HTTPS request
             const response = await axios.request({
                 url: urlObject.toString(),
@@ -78,10 +83,6 @@ export class ZbsProjectActionFetchRunner extends ZbsProjectActionRunner {
     }
     
     async runType(): Promise<void> {
-        this.logger.trace("Running fetch action.");
-        if(!zbsIsActionFetch(this.action)) {
-            throw new Error("Internal error: Action type inconsistency.");
-        }
         const cwd = this.getConfigCwd();
         const outputPath = path.resolve(cwd, this.action.outputPath);
         if(fs.existsSync(outputPath)) {

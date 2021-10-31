@@ -18,10 +18,14 @@ export class ZbsProjectActionLinkRunner extends ZbsProjectActionRunner {
         super(options);
     }
     
-    getLinkOutputPath(): string {
-        if(!zbsIsActionLink(this.action)) {
+    get action(): ZbsConfigActionLink {
+        if(!zbsIsActionLink(this.actionConfig)) {
             throw new Error("Internal error: Action type inconsistency.");
         }
+        return this.actionConfig;
+    }
+    
+    getLinkOutputPath(): string {
         if(this.action.outputPath) {
             return this.action.outputPath;
         }
@@ -42,10 +46,6 @@ export class ZbsProjectActionLinkRunner extends ZbsProjectActionRunner {
     }
     
     async runType(): Promise<void> {
-        this.logger.trace("Running link action.");
-        if(!zbsIsActionLink(this.action)) {
-            throw new Error("Internal error: Action type inconsistency.");
-        }
         const cwd = this.getConfigCwd();
         const env = this.getConfigObjectAdditive<string>("env");
         const compiler = this.getConfig<string>("compiler") || "";
@@ -72,9 +72,16 @@ export class ZbsProjectActionLinkRunner extends ZbsProjectActionRunner {
             suppressErrors: true,
         });
         if(!objectPaths.length) {
-            return this.fail(
-                "Link action failed: No object files were found."
-            );
+            if(this.project.dryRun) {
+                this.logger.info("Dry-run: No object files were found.");
+                return;
+            }
+            else {
+                this.fail(
+                    "Link action failed: No object files were found."
+                );
+                return;
+            }
         }
         const args: string[] = [];
         args.push(...objectPaths);

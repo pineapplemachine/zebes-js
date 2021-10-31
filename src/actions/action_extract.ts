@@ -31,6 +31,13 @@ export class ZbsProjectActionExtractRunner extends ZbsProjectActionRunner {
         super(options);
     }
     
+    get action(): ZbsConfigActionExtract {
+        if(!zbsIsActionExtract(this.actionConfig)) {
+            throw new Error("Internal error: Action type inconsistency.");
+        }
+        return this.actionConfig;
+    }
+    
     getArchiveFormat(actionFormat: string | undefined, archivePath: string) {
         if(actionFormat) {
             return actionFormat;
@@ -114,10 +121,6 @@ export class ZbsProjectActionExtractRunner extends ZbsProjectActionRunner {
     }
     
     async runType(): Promise<void> {
-        this.logger.trace("Running extract action.");
-        if(!zbsIsActionExtract(this.action)) {
-            throw new Error("Internal error: Action type inconsistency.");
-        }
         const cwd = this.getConfigCwd();
         const archivePath = path.resolve(cwd, this.action.archivePath);
         const outputPath = path.resolve(cwd, this.action.outputPath);

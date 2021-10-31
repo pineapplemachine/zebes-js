@@ -20,37 +20,21 @@ import {zbsValueToString} from "../to_string";
 
 /**
 
-IMMEDIATE TODO:
-Copy files with glob pattern
-- use this to copy only the needed headers out of raylib sources
-
-
-
-Fix incremental getDependencies method
-
-7z - use command line 7z binary
-rar - use unrar binary
-
 TODO: add some things
-fix incremental builds
-make d work DONE
+document all the things
+Fix incremental getDependencies method
 action type: branch
-action type: fetch DONE
-action type: extract DONE
 action type: rename
-action type: copy
 fetch FTP and SFTP support
-extract 7z support
+extract 7z support (use shell 7z command)
 extract gz support
-extract rar support
+extract rar support (use shell rar command)
 fix logger spacing
 option to use symlinks to cache instead of copying
-action type: make - e.g. dispatch to mingw32-make on windows
 --no-cache CLI arg to fetch and ignore cache
 zebes refresh to clear download cache etc
 DMD -makedeps
 DMD -J and ImportExpressions
-external dependency cache
 action type: parallel
 action filters (e.g. based on platform)
 action messages (log, warn, error on success and/or failure)
@@ -60,12 +44,19 @@ custom templates directory
 
 zebes info: print out project config data DONE
 --dry-run DONE
+action type: copy DONE
+action type: fetch DONE
+action type: extract DONE
 validate: warn unknown keys DONE
+external dependency cache DONE
+Copy files with glob pattern DONE
 config tostring functions DONE
 improve action interfaces DONE
 actions run iteratively, not recursively DONE
 allow json comments, trailing commas etc (+flag to disable) DONE
 fix undefined config list values always parsing as empty list DONE
+action type: make - e.g. dispatch to mingw32-make on windows DONE
+make d work DONE
 
 GOAL:
 configure to work with raylib-cpp

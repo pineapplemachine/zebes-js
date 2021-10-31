@@ -12,6 +12,7 @@ import "./actions/action_extract";
 import "./actions/action_fetch";
 import "./actions/action_link";
 import "./actions/action_make";
+import "./actions/action_move";
 import "./actions/action_remove";
 import "./actions/action_shell";
 

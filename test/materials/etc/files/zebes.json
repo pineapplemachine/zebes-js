@@ -1,0 +1,138 @@
+{
+    "targets": [
+        {
+            "name": "test_copy_file",
+            "actions": [
+                {
+                    "type": "copy",
+                    "copyPath": "books/anathem.txt",
+                    "outputPath": "books/anathem_copy.txt"
+                }
+            ]
+        },
+        {
+            "name": "test_copy_file_overwrite",
+            "actions": [
+                {
+                    "type": "copy",
+                    "copyPath": "people/turing.txt",
+                    "outputPath": "people/person_copy.txt"
+                },
+                {
+                    "type": "copy",
+                    "copyPath": "people/wittgenstein.txt",
+                    "outputPath": "people/person_copy.txt",
+                    "overwrite": true
+                },
+                {
+                    "type": "copy",
+                    "copyPath": "people/lovelace.txt",
+                    "outputPath": "people/person_copy.txt",
+                    "overwrite": false
+                }
+            ]
+        },
+        {
+            "name": "test_copy_dir",
+            "actions": [
+                {
+                    "type": "copy",
+                    "copyPath": "books",
+                    "outputPath": "books_copy"
+                }
+            ]
+        },
+        {
+            "name": "test_copy_glob",
+            "actions": [
+                {
+                    "type": "copy",
+                    "copyPathsBase": "cities",
+                    "copyPaths": ["*.jpg"],
+                    "outputPath": "city_images"
+                }
+            ]
+        },
+        {
+            "name": "test_move_file",
+            "actions": [
+                {
+                    "type": "move",
+                    "movePath": "books/dune.txt",
+                    "outputPath": "books/dune_moved.txt"
+                }
+            ]
+        },
+        {
+            "name": "test_move_file_overwrite",
+            "actions": [
+                {
+                    "type": "move",
+                    "movePath": "books/monstrous.txt",
+                    "outputPath": "books/book_moved.txt"
+                },
+                {
+                    "type": "move",
+                    "movePath": "books/xenogenesis.txt",
+                    "outputPath": "books/book_moved.txt",
+                    "overwrite": true
+                },
+                {
+                    "type": "move",
+                    "movePath": "books/parable.txt",
+                    "outputPath": "books/book_moved.txt",
+                    "ignoreFailure": true,
+                    "overwrite": false
+                }
+            ]
+        },
+        {
+            "name": "test_move_dir",
+            "actions": [
+                {
+                    "type": "move",
+                    "movePath": "movies",
+                    "outputPath": "movies_moved"
+                }
+            ]
+        },
+        {
+            "name": "test_move_glob",
+            "actions": [
+                {
+                    "type": "move",
+                    "movePathsBase": "fruits",
+                    "movePaths": ["*.jpg"],
+                    "outputPath": "fruit_images"
+                }
+            ]
+        },
+        {
+            "name": "test_remove_file",
+            "actions": [
+                {
+                    "type": "remove",
+                    "removePath": "books/fellowship.txt"
+                }
+            ]
+        },
+        {
+            "name": "test_remove_dir",
+            "actions": [
+                {
+                    "type": "remove",
+                    "removePath": "books"
+                }
+            ]
+        },
+        {
+            "name": "test_remove_glob",
+            "actions": [
+                {
+                    "type": "remove",
+                    "removePaths": ["cities/*.jpg"]
+                }
+            ]
+        }
+    ]
+}

@@ -20,16 +20,33 @@ export class ZbsProjectActionCopyRunner extends ZbsProjectActionRunner {
         super(options);
     }
     
-    async runType(): Promise<void> {
-        this.logger.trace("Running copy action.");
-        if(!zbsIsActionCopy(this.action)) {
+    get action(): ZbsConfigActionCopy {
+        if(!zbsIsActionCopy(this.actionConfig)) {
             throw new Error("Internal error: Action type inconsistency.");
         }
+        return this.actionConfig;
+    }
+    
+    async copyPath(srcPath: string, destPath: string) {
+        if(fs.existsSync(destPath) && !this.action.overwrite) {
+            this.logger.info(
+                `Destination path already exists and copy action's ` +
+                `\"overwrite\" flag is not set. Skipping: ` + destPath
+            );
+        }
+        else {
+            await this.project.fsCopy(
+                srcPath, destPath, !!this.action.overwrite
+            );
+        }
+    }
+    
+    async runType(): Promise<void> {
         const cwd = this.getConfigCwd();
         const outputPath = path.resolve(cwd, this.action.outputPath);
         if(this.action.copyPath) {
             const copyPath = path.resolve(cwd, this.action.copyPath);
-            await this.project.fsCopy(copyPath, outputPath);
+            this.copyPath(copyPath, outputPath);
         }
         else if(this.action.copyPaths && this.action.copyPaths.length) {
             const copyPathsBase = path.resolve(
@@ -41,10 +58,9 @@ export class ZbsProjectActionCopyRunner extends ZbsProjectActionRunner {
                 onlyFiles: false,
             });
             for(const copyPath of copyPaths) {
-                const copyOutputPath = path.resolve(outputPath, copyPath);
-                await this.project.fsCopy(
+                this.copyPath(
                     path.resolve(copyPathsBase, copyPath),
-                    copyOutputPath,
+                    path.resolve(outputPath, copyPath),
                 );
             }
         }

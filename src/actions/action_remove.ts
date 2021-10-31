@@ -20,50 +20,44 @@ export class ZbsProjectActionRemoveRunner extends ZbsProjectActionRunner {
         super(options);
     }
     
-    async runType(): Promise<void> {
-        this.logger.trace("Running remove action.");
-        if(!zbsIsActionRemove(this.action)) {
+    get action(): ZbsConfigActionRemove {
+        if(!zbsIsActionRemove(this.actionConfig)) {
             throw new Error("Internal error: Action type inconsistency.");
         }
-        const cwd = this.getConfigCwd();
-        const removePaths = await glob(this.action.removePaths, {
-            cwd: cwd,
-            suppressErrors: true,
-            onlyFiles: false,
-        });
-        for(const removePath of removePaths) {
-            if(!removePath) {
-                continue;
-            }
-            const resolvedRemovePath = path.resolve(cwd, removePath);
-            const stat = fs.statSync(resolvedRemovePath, {
-                throwIfNoEntry: false,
-            });
-            if(!stat) {
-                this.logger.debug(
-                    "Not removing path (doesn't exist):",
-                    resolvedRemovePath
-                );
-                continue;
-            }
-            const removeName = stat.isDirectory() ? "directory" : "file";
-            if(this.project.dryRun) {
-                this.logger.info(
-                    `Dry-run: Removing ${removeName}:`,
-                    resolvedRemovePath
-                );
-                continue;
-            }
-            const removeOk = await this.project.promptConfirm(
-                `Remove ${removeName} ${resolvedRemovePath} ?`, false
+        return this.actionConfig;
+    }
+    
+    async removePath(removePath: string) {
+        if(!fs.existsSync(removePath)) {
+            this.logger.info(
+                "Path doesn't exist. Skipping removal:", removePath
             );
-            if(removeOk) {
-                this.logger.info(`Removing ${removeName}:`, resolvedRemovePath);
-                fsExtra.removeSync(resolvedRemovePath);
+            return;
+        }
+        if(this.action.prompt && !this.project.dryRun) {
+            const removePrompt = await this.project.promptConfirm(
+                `Remove path? ${removePath}`, false
+            );
+            if(!removePrompt) {
+                this.logger.info("Not removing path:", removePath);
+                return;
             }
-            else {
-                this.logger.info(`Not removing ${removeName}:`, resolvedRemovePath);
-            }
+        }
+        await this.project.fsRemove(removePath);
+    }
+    
+    async runType(): Promise<void> {
+        const cwd = this.getConfigCwd();
+        const removePaths = (this.action.removePath ?
+            [this.action.removePath || ""] :
+            await glob(this.action.removePaths || [], {
+                cwd: cwd,
+                suppressErrors: true,
+                onlyFiles: false,
+            })
+        );
+        for(const removePath of removePaths) {
+            await this.removePath(path.resolve(cwd, removePath));
         }
     }
 }

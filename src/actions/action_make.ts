@@ -15,6 +15,13 @@ export class ZbsProjectActionMakeRunner extends ZbsProjectActionRunner {
         super(options);
     }
     
+    get action(): ZbsConfigActionMake {
+        if(!zbsIsActionMake(this.actionConfig)) {
+            throw new Error("Internal error: Action type inconsistency.");
+        }
+        return this.actionConfig;
+    }
+    
     async getMakeCommand(): Promise<string> {
         if(this.project.home.config.makeCommand) {
             return this.project.home.config.makeCommand;
@@ -40,10 +47,6 @@ export class ZbsProjectActionMakeRunner extends ZbsProjectActionRunner {
     }
     
     async runType(): Promise<void> {
-        this.logger.trace("Running make action.");
-        if(!zbsIsActionMake(this.action)) {
-            throw new Error("Internal error: Action type inconsistency.");
-        }
         const cwd = this.getConfigCwd();
         const env = this.getConfigObjectAdditive<string>("env");
         const makeCommand = await this.getMakeCommand();

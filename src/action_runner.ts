@@ -30,7 +30,7 @@ export interface ZbsProjectRunnerNextAction {
 }
 
 /**
- * Helper class to handle running a project action.
+ * Helper class to handle running a single action.
  * This is a base class which should be extended with
  * implementation specifics for each action type.
  */
@@ -42,7 +42,7 @@ export class ZbsProjectActionRunner {
     /** Config object for target that the action is running under. */
     target: ZbsConfigTarget | undefined;
     /** Config object for the action being run. */
-    action: ZbsConfigAction;
+    actionConfig: ZbsConfigAction;
     /** Flag is set to true upon action failure. */
     failed: boolean;
     /** Flag is set to true if failure was due to malformed config. */
@@ -70,7 +70,7 @@ export class ZbsProjectActionRunner {
     constructor(options: ZbsProjectActionRunnerOptions) {
         this.project = options.project;
         this.target = options.target;
-        this.action = options.action;
+        this.actionConfig = options.action;
         this.failed = false;
         this.malformed = false;
         this.logger = options.project.logger;
@@ -95,6 +95,10 @@ export class ZbsProjectActionRunner {
             this.fail("Link action must have an associated system.", true);
         }
         this.configResolver.system = this.system;
+    }
+    
+    get action(): ZbsConfigAction {
+        return this.actionConfig;
     }
     
     getActionName(): string {
@@ -161,7 +165,10 @@ export class ZbsProjectActionRunner {
             this.logger.trace("Aborting action: Failed before running.");
             return;
         }
-        this.logger.info("Running action:", () => this.getActionName());
+        this.logger.info(() => (
+            `Running ${this.action.type} action: ` +
+            this.getActionName()
+        ));
         this.logger.trace(() => ("Action config:\n" +
             zbsValueToString(this.action, "  ")
         ));
@@ -176,9 +183,10 @@ export class ZbsProjectActionRunner {
             this.logger.error(error);
             this.failed = true;
         }
-        this.logger.trace("Finished running action:",
-            () => this.getActionName()
-        );
+        this.logger.info(() => (
+            `Finished running ${this.action.type} action: ` +
+            this.getActionName()
+        ));
     }
     
     /**
