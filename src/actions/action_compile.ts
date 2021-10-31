@@ -135,6 +135,10 @@ export class ZbsProjectActionCompileRunner extends ZbsProjectActionRunner {
                     this.logger.debug(
                         "Source file was found to have not changed:", sourcePath
                     );
+                    this.project.addCompiledObject(
+                        this.action.objectList,
+                        path.resolve(cwd, objectPath),
+                    );
                 }
             }
         }
@@ -167,6 +171,10 @@ export class ZbsProjectActionCompileRunner extends ZbsProjectActionRunner {
                     buildPath
                 );
             }
+            this.project.addCompiledObject(
+                this.action.objectList,
+                path.resolve(cwd, objectPath),
+            );
             if(incremental && !this.project.dryRun) {
                 await dependencies.update({
                     sourcePath: buildPath,

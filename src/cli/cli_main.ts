@@ -24,7 +24,6 @@ TODO: add some things
 document all the things
 Fix incremental getDependencies method
 action type: branch
-action type: rename
 fetch FTP and SFTP support
 extract 7z support (use shell 7z command)
 extract gz support
@@ -38,13 +37,13 @@ DMD -J and ImportExpressions
 action type: parallel
 action filters (e.g. based on platform)
 action messages (log, warn, error on success and/or failure)
-track objects for compile actions, refer to them in link actions
 local config edits ?
 custom templates directory
 
 zebes info: print out project config data DONE
 --dry-run DONE
 action type: copy DONE
+action type: move DONE
 action type: fetch DONE
 action type: extract DONE
 validate: warn unknown keys DONE
@@ -56,6 +55,7 @@ actions run iteratively, not recursively DONE
 allow json comments, trailing commas etc (+flag to disable) DONE
 fix undefined config list values always parsing as empty list DONE
 action type: make - e.g. dispatch to mingw32-make on windows DONE
+track objects for compile actions, refer to them in link actions TODO
 make d work DONE
 
 GOAL:

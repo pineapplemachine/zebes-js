@@ -125,6 +125,8 @@ export interface ZbsConfigActionCompile extends ZbsConfigActionCommon {
     rebuildSourcePaths?: string[];
     /** Output compiled object files into this directory. */
     outputPath: string;
+    /** Identifiable name for the list of created object files. */
+    objectList?: string;
 }
 
 /** Action: Copy files. */
@@ -215,6 +217,10 @@ export interface ZbsConfigActionLink extends ZbsConfigActionCommon {
     libraries?: string[];
     /** Include files matching these glob patterns when linking. */
     objectPaths?: string[];
+    /** Compile objects stored in lists by prior "compile" actions. */
+    objectLists?: string[];
+    /** Link objects produced by preceding "compile" actions. */
+    objectsAuto?: boolean;
     /** Path to linker output. Normally passed via the "-o" option. */
     outputPath?: string;
     /** Output `[name].exe` on Windows and `[name]` elsewhere. */

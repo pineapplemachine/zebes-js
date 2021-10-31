@@ -47,6 +47,10 @@ export class ZbsProject {
     home: ZbsHome;
     /** Run using these environment variables. */
     env: {[name: string]: string};
+    /** Full list of object files produced by "compile" actions. */
+    objectsAuto: Set<string>;
+    /** Named lists of object files used by "compile" and "link" actions. */
+    objectLists: {[name: string]: Set<string>};
     /** Map system config objects by name. */
     systemsMap: {[name: string]: ZbsConfigSystem};
     /** Map action config objects by name. */
@@ -70,6 +74,8 @@ export class ZbsProject {
         this.env = env || <any> process.env;
         this.dryRun = false;
         this.prompt = new ZbsPrompt();
+        this.objectsAuto = new Set();
+        this.objectLists = {};
         function buildMap<T extends {name?: string | undefined}>(
             list: T[] | null | undefined
         ): {[name: string]: T} {
@@ -121,6 +127,22 @@ export class ZbsProject {
         else {
             return action;
         }
+    }
+    
+    addCompiledObject(listName: string | undefined, objectPath: string) {
+        if(listName) {
+            if(!this.objectLists[listName]) {
+                this.objectLists[listName] = new Set();
+            }
+            this.objectLists[listName].add(objectPath);
+        }
+        this.objectsAuto.add(objectPath);
+    }
+    
+    takeObjectsAuto() {
+        const objectsAuto = this.objectsAuto;
+        this.objectsAuto = new Set();
+        return objectsAuto;
     }
     
     async fsMkdir(dirPath: string) {

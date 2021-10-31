@@ -503,6 +503,7 @@ export function zbsValidateConfigActionCompile(
         rebuildAll: zbsValidateBoolean,
         rebuildSourcePaths: zbsValidateStringList,
         outputPath: zbsValidateRequiredString,
+        objectList: zbsValidateString,
         ...ZbsValidateConfigActionCommonObject,
     })(value, context);
 }
@@ -611,6 +612,8 @@ export function zbsValidateConfigActionLink(
         libraryPaths: zbsValidateStringList,
         libraries: zbsValidateStringList,
         objectPaths: zbsValidateStringList,
+        objectLists: zbsValidateStringList,
+        objectsAuto: zbsValidateBoolean,
         outputPath: zbsValidateString,
         outputBinaryName: zbsValidateString,
         ...ZbsValidateConfigActionCommonObject,
@@ -620,6 +623,16 @@ export function zbsValidateConfigActionLink(
             `At ${context.path}: Link action ` +
             `must specify either an "outputPath" or ` +
             `an "outputBinaryName" attribute.`
+        );
+    }
+    if(!action.objectsAuto &&
+        (!action.objectLists || !action.objectLists.length) &&
+        (!action.objectPaths || !action.objectPaths.length)
+    ) {
+        context.errors.push(
+            `At ${context.path}: Link action requires ` +
+            `object files. Provide them with "objectsAuto", ` +
+            `"objectLists", or "objectPaths" attributes.`
         );
     }
     return action;

@@ -60,27 +60,63 @@ canary.test(`c/hello - Build trivial C program`, async function() {
 });
 
 canary.test(`c/bottles - Build multi source C program (Dry run)`, async function() {
-    const helloDir = cloneMaterials("c/bottles");
-    await zebes(helloDir, ["init", "c", "toml"]);
-    assert(fs.existsSync(path.join(helloDir, "zebes.toml")));
-    await zebes(helloDir, ["build", "--dry-run"]);
-    assert(!fs.existsSync(path.join(helloDir, "bin")));
-    assert(!fs.existsSync(path.join(helloDir, "build")));
+    const projectDir = cloneMaterials("c/bottles");
+    await zebes(projectDir, ["init", "c", "toml"]);
+    assert(fs.existsSync(path.join(projectDir, "zebes.toml")));
+    await zebes(projectDir, ["build", "--dry-run"]);
+    assert(!fs.existsSync(path.join(projectDir, "bin")));
+    assert(!fs.existsSync(path.join(projectDir, "build")));
 });
 
 canary.test(`c/bottles - Build multi source C program`, async function() {
-    const helloDir = cloneMaterials("c/bottles");
-    await zebes(helloDir, ["init", "c", "toml"]);
-    assert(fs.existsSync(path.join(helloDir, "zebes.toml")));
-    await zebes(helloDir, ["build"]);
+    const projectDir = cloneMaterials("c/bottles");
+    await zebes(projectDir, ["init", "c", "toml"]);
+    assert(fs.existsSync(path.join(projectDir, "zebes.toml")));
+    await zebes(projectDir, ["build"]);
     const binaryName = getPlatformBinaryName("main");
-    assert(fs.existsSync(path.join(helloDir, "bin", binaryName)));
+    assert(fs.existsSync(path.join(projectDir, "bin", binaryName)));
     const result = await spawn(binaryName, [], {
-        cwd: path.join(helloDir, "bin"),
+        cwd: path.join(projectDir, "bin"),
     });
     assert(result.statusCode === 0);
     assert(result.stdout.startsWith("99 bottles of beer on the wall"));
     assert(result.stdout.indexOf("no more bottles of beer on the wall") > 0);
+});
+
+canary.test(`c/bottles - Build multi source C program (Link object tests)`, async function() {
+    const projectDir = cloneMaterials("c/bottles");
+    const binaryName = getPlatformBinaryName("main");
+    // Verify config template usage of "objectsAuto", tested elsewhere
+    await zebes(projectDir, ["init", "c", "json"]);
+    const projectConfigPath = path.join(projectDir, "zebes.json");
+    assert(fs.existsSync(projectConfigPath));
+    const projectConfig = JSON.parse(fs.readFileSync(projectConfigPath, "utf-8"));
+    assert(projectConfig.targets[0].actions[1].objectsAuto);
+    // Change config to use "objectPaths" instead
+    projectConfig.targets[0].actions[1].objectsAuto = false;
+    projectConfig.targets[0].actions[1].objectLists = undefined;
+    projectConfig.targets[0].actions[1].objectPaths = ["build/**/*.o"];
+    fs.writeFileSync(projectConfigPath, JSON.stringify(projectConfig));
+    await zebes(projectDir, ["build"]);
+    assert(fs.existsSync(path.join(projectDir, "bin", binaryName)));
+    const resultPaths = await spawn(binaryName, [], {
+        cwd: path.join(projectDir, "bin"),
+    });
+    assert(resultPaths.statusCode === 0);
+    assert(resultPaths.stdout.startsWith("99 bottles of beer on the wall"));
+    // Change config to use "objectLists" instead
+    projectConfig.targets[0].actions[0].objectList = "bottles_objects";
+    projectConfig.targets[0].actions[1].objectsAuto = false;
+    projectConfig.targets[0].actions[1].objectPaths = undefined;
+    projectConfig.targets[0].actions[1].objectLists = ["bottles_objects"];
+    fs.writeFileSync(projectConfigPath, JSON.stringify(projectConfig));
+    await zebes(projectDir, ["build"]);
+    assert(fs.existsSync(path.join(projectDir, "bin", binaryName)));
+    const resultLists = await spawn(binaryName, [], {
+        cwd: path.join(projectDir, "bin"),
+    });
+    assert(resultLists.statusCode === 0);
+    assert(resultLists.stdout.startsWith("99 bottles of beer on the wall"));
 });
 
 canary.test(`cpp/hello - Build trivial C++ program`, async function() {

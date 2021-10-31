@@ -46,6 +46,7 @@ export class ZbsProjectActionLinkRunner extends ZbsProjectActionRunner {
     }
     
     async runType(): Promise<void> {
+        // Get and validate configuration values
         const cwd = this.getConfigCwd();
         const env = this.getConfigObjectAdditive<string>("env");
         const compiler = this.getConfig<string>("compiler") || "";
@@ -67,22 +68,42 @@ export class ZbsProjectActionLinkRunner extends ZbsProjectActionRunner {
                 "Link action failed: No output path has been specified."
             );
         }
-        const objectPaths = await glob(this.action.objectPaths || [], {
-            cwd: cwd,
-            suppressErrors: true,
-        });
-        if(!objectPaths.length) {
-            if(this.project.dryRun) {
-                this.logger.info("Dry-run: No object files were found.");
-                return;
-            }
-            else {
-                this.fail(
-                    "Link action failed: No object files were found."
-                );
-                return;
+        // Build list of object file paths
+        const objectPaths: Set<string> = new Set();
+        if(this.action.objectPaths) {
+            const globObjectPaths = await glob(this.action.objectPaths, {
+                cwd: cwd,
+                suppressErrors: true,
+            });
+            for(const objectPath of globObjectPaths) {
+                objectPaths.add(objectPath);
             }
         }
+        if(this.action.objectLists) {
+            for(const listName of this.action.objectLists) {
+                for(const objectPath of this.project.objectLists[listName]) {
+                    objectPaths.add(objectPath);
+                }
+            }
+        }
+        if(this.action.objectsAuto) {
+            for(const objectPath of this.project.takeObjectsAuto()) {
+                objectPaths.add(objectPath);
+            }
+        }
+        if(!objectPaths.size) {
+            if(this.project.dryRun) {
+                this.logger.info("Dry-run: No object files were found.");
+            }
+            else {
+                this.fail("Link action failed: No object files were found.");
+            }
+            return;
+        }
+        this.logger.debug(
+            "Found", objectPaths.size, "object files to link."
+        );
+        // Build args list and run the linker command
         const args: string[] = [];
         args.push(...objectPaths);
         args.push(...libraryPaths.map(
