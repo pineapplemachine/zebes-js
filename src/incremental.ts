@@ -15,8 +15,6 @@ import {zbsGzipJsonWrite} from "./util/util_json_gzip";
 
 export interface ZbsDependencyMapUpdateOptions {
     sourcePath: string;
-    dryRun: boolean;
-    env: {[name: string]: string};
     compiler: string;
     compileArgs: string[];
     includePaths: string[];
@@ -89,6 +87,13 @@ export class ZbsDependencyMap {
     }
     
     async write(dataPath: string): Promise<void> {
+        if(this.project.dryRun) {
+            this.logger.debug(
+                "Dry-run: Writing dependencies data:", dataPath
+            );
+            return;
+        }
+        this.logger.debug("Writing dependencies data:", dataPath);
         await zbsGzipJsonWrite(dataPath, {
             version: 1,
             timestamp: new Date().getTime(),
@@ -254,7 +259,6 @@ export class ZbsDependencyMap {
             "Updating dependency information for source file:",
             options.sourcePath
         );
-        this.anyUpdate = true;
         const timestamp = new Date().getTime();
         const dependencies: string[] = [];
         if(options.compileMakeRuleArg) {
@@ -262,7 +266,7 @@ export class ZbsDependencyMap {
                 await this.getMakeRuleDependencies(options)
             ));
         }
-        if(!options.dryRun) {
+        if(!this.project.dryRun) {
             const hasIncludePatterns = (
                 Array.isArray(options.includeSourcePatterns) &&
                 options.includeSourcePatterns.length
@@ -322,7 +326,7 @@ export class ZbsDependencyMap {
         let stdoutData: string[] = [];
         const statusCode = await this.project.processSpawn(options.compiler, args, {
             cwd: this.cwd,
-            env: Object.assign({}, this.env, options.env),
+            env: this.env,
             shell: true,
         }, {
             stdout: (data) => {

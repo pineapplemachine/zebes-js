@@ -22,7 +22,7 @@ export class ZbsProjectActionShellRunner extends ZbsProjectActionRunner {
     
     async runType(): Promise<void> {
         const cwd = this.getConfigCwd();
-        const env = this.getConfigObjectAdditive<string>("env");
+        const env = this.getConfigEnv();
         this.logger.debug("Current working directory for shell action:", cwd);
         for(const command of this.action.commands) {
             if(!command) {
@@ -30,7 +30,7 @@ export class ZbsProjectActionShellRunner extends ZbsProjectActionRunner {
             }
             const statusCode = await this.project.processExec(command, {
                 cwd: cwd,
-                env: Object.assign({}, this.project.env, env),
+                env: env,
             });
             if(statusCode !== 0) {
                 this.fail(`Command failed: Status code ${statusCode}`);

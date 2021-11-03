@@ -1,3 +1,4 @@
+import {ZbsConfigActionAssert} from "./config_types";
 import {ZbsConfigActionCompile} from "./config_types";
 import {ZbsConfigActionCopy} from "./config_types";
 import {ZbsConfigActionFetch} from "./config_types";
@@ -315,7 +316,9 @@ export function zbsValidateConfigHome(
         allowActionCycles: zbsValidateBoolean,
         parallel: zbsValidateFiniteNumber,
         runMaxActions: zbsValidateFiniteNumber,
-        makeCommand: zbsValidateString,
+        commandMake: zbsValidateString,
+        command7z: zbsValidateString,
+        commandUnrar: zbsValidateString,
     })(value, context);
 }
 
@@ -449,7 +452,10 @@ export function zbsValidateConfigActionInline(
         context.errors.push(`At ${context.path}: Must be an object.`);
         return undefined;
     }
-    if(value.type === "compile") {
+    if(value.type === "assert") {
+        return zbsValidateConfigActionAssert(value, context);
+    }
+    else if(value.type === "compile") {
         return zbsValidateConfigActionCompile(value, context);
     }
     else if(value.type === "copy") {
@@ -488,6 +494,17 @@ export function zbsValidateConfigActionInline(
         );
         return undefined;
     }
+}
+
+export function zbsValidateConfigActionAssert(
+    value: any, context: ZbsValidateContext
+) {
+    return <ZbsConfigActionAssert> zbsValidateObject({
+        type: zbsValidateExactString("assert"),
+        assertions: zbsValidateRequiredDefinedList<string[]>(
+            zbsValidateRequiredStringList
+        ),
+    })(value, context);
 }
 
 export function zbsValidateConfigActionCompile(
@@ -577,7 +594,7 @@ export function zbsValidateConfigActionExtract(
 ) {
     return <ZbsConfigActionExtract> zbsValidateObject({
         type: zbsValidateExactString("extract"),
-        archivePath: zbsValidateRequiredString,
+        extractPath: zbsValidateRequiredString,
         outputPath: zbsValidateRequiredString,
         format: zbsValidateString,
         ...ZbsValidateConfigActionCommonObject,

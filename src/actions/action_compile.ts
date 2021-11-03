@@ -76,7 +76,7 @@ export class ZbsProjectActionCompileRunner extends ZbsProjectActionRunner {
     
     async runType(): Promise<void> {
         const cwd = this.getConfigCwd();
-        const env = this.getConfigObjectAdditive<string>("env");
+        const env = this.getConfigEnv();
         const incremental = !!this.getConfig<boolean>("incremental");
         const compiler = this.getConfig<string>("compiler") || "";
         const compileArgs = this.getConfigListAdditive<string>("compileArgs");
@@ -98,7 +98,7 @@ export class ZbsProjectActionCompileRunner extends ZbsProjectActionRunner {
             this.action.outputPath, ".zebes/deps.json.gz"
         );
         const dependencies = new ZbsDependencyMap(
-            cwd, this.project.env, this.project
+            cwd, env, this.project
         );
         const filesModified = new ZbsFilesModified(cwd, this.logger);
         if(incremental) {
@@ -162,7 +162,7 @@ export class ZbsProjectActionCompileRunner extends ZbsProjectActionRunner {
             );
             const statusCode = await this.project.processSpawn(compiler, args, {
                 cwd: cwd,
-                env: Object.assign({}, this.project.env, env),
+                env: env,
                 shell: true,
             });
             if(statusCode !== 0) {
@@ -175,11 +175,9 @@ export class ZbsProjectActionCompileRunner extends ZbsProjectActionRunner {
                 this.action.objectList,
                 path.resolve(cwd, objectPath),
             );
-            if(incremental && !this.project.dryRun) {
+            if(incremental) {
                 await dependencies.update({
                     sourcePath: buildPath,
-                    dryRun: this.project.dryRun,
-                    env: env,
                     compiler: compiler,
                     compileArgs: baseArgs,
                     includePaths: includePaths,
@@ -203,8 +201,7 @@ export class ZbsProjectActionCompileRunner extends ZbsProjectActionRunner {
             Math.max(this.project.home.config.parallel || 0, 1),
             buildPaths.map((buildPath) => (() => build(buildPath))),
         );
-        if(incremental && !this.project.dryRun && dependencies.anyUpdate) {
-            this.logger.debug("Writing dependencies data:", depsPath);
+        if(incremental && dependencies.anyUpdate) {
             await this.project.fsMkdir(path.dirname(depsPath));
             await dependencies.write(depsPath);
         }

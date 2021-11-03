@@ -48,7 +48,7 @@ export class ZbsProjectActionLinkRunner extends ZbsProjectActionRunner {
     async runType(): Promise<void> {
         // Get and validate configuration values
         const cwd = this.getConfigCwd();
-        const env = this.getConfigObjectAdditive<string>("env");
+        const env = this.getConfigEnv();
         const compiler = this.getConfig<string>("compiler") || "";
         const linker = this.getConfig<string>("linker") || compiler;
         const linkArgs = this.getConfigListAdditive<string>("linkArgs");
@@ -120,7 +120,7 @@ export class ZbsProjectActionLinkRunner extends ZbsProjectActionRunner {
         this.logger.info("Linking:", outputPath);
         const statusCode = await this.project.processSpawn(linker, args, {
             cwd: cwd,
-            env: Object.assign({}, this.project.env, env),
+            env: env,
             shell: true,
         });
         if(statusCode !== 0) {

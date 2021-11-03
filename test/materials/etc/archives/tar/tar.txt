@@ -1,0 +1,3 @@
+In computing, tar is a computer software utility for collecting many files into one archive file, often referred to as a tarball, for distribution or backup purposes. The name is derived from "tape archive", as it was originally developed to write data to sequential I/O devices with no file system of their own. The archive data sets created by tar contain various file system parameters, such as name, timestamps, ownership, file-access permissions, and directory organization. 
+
+https://en.wikipedia.org/wiki/Tar_(computing)

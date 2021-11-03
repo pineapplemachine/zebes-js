@@ -1,0 +1,5 @@
+7z is a compressed archive file format that supports several different data compression, encryption and pre-processing algorithms. The 7z format initially appeared as implemented by the 7-Zip archiver. The 7-Zip program is publicly available under the terms of the GNU Lesser General Public License. The LZMA SDK 4.62 was placed in the public domain in December 2008. The latest stable version of 7-Zip and LZMA SDK is version 19.00.[2]
+
+The 7z file format specification is distributed with 7-Zip's source code. The specification can be found in plain text format in the 'doc' sub-directory of the source code distribution. 
+
+https://en.wikipedia.org/wiki/7z

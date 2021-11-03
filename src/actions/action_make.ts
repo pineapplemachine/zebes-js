@@ -5,7 +5,7 @@ import {ZbsConfigActionMake} from "../config/config_types";
 import {zbsIsActionMake} from "../config/config_types";
 
 export class ZbsProjectActionMakeRunner extends ZbsProjectActionRunner {
-    static makeCommand: string | undefined = undefined;
+    static commandMake: string | undefined = undefined;
     
     static matchActionConfig(action: ZbsConfigAction): boolean {
         return zbsIsActionMake(action);
@@ -23,11 +23,11 @@ export class ZbsProjectActionMakeRunner extends ZbsProjectActionRunner {
     }
     
     async getMakeCommand(): Promise<string> {
-        if(this.project.home.config.makeCommand) {
-            return this.project.home.config.makeCommand;
+        if(this.project.home.config.commandMake) {
+            return this.project.home.config.commandMake;
         }
-        if(!ZbsProjectActionMakeRunner.makeCommand) {
-            ZbsProjectActionMakeRunner.makeCommand = "make";
+        if(!ZbsProjectActionMakeRunner.commandMake) {
+            ZbsProjectActionMakeRunner.commandMake = "make";
             if(process.platform === "win32") {
                 const statusCode = await this.project.processSpawn(
                     "mingw32-make", ["--version"], {
@@ -39,25 +39,25 @@ export class ZbsProjectActionMakeRunner extends ZbsProjectActionRunner {
                     "Status code for checking mingw32-make:", statusCode
                 );
                 if(statusCode === 0) {
-                    ZbsProjectActionMakeRunner.makeCommand = "mingw32-make";
+                    ZbsProjectActionMakeRunner.commandMake = "mingw32-make";
                 }
             }
         }
-        return ZbsProjectActionMakeRunner.makeCommand || "";
+        return ZbsProjectActionMakeRunner.commandMake || "";
     }
     
     async runType(): Promise<void> {
         const cwd = this.getConfigCwd();
-        const env = this.getConfigObjectAdditive<string>("env");
-        const makeCommand = await this.getMakeCommand();
+        const env = this.getConfigEnv();
+        const commandMake = await this.getMakeCommand();
         const makeArgs: string[] = this.action.makeArgs || [];
         this.logger.debug("Current working directory for make action:", cwd);
         this.logger.debug("Using make command:",
-            () => JSON.stringify(makeCommand)
+            () => JSON.stringify(commandMake)
         );
-        const statusCode = await this.project.processSpawn(makeCommand, makeArgs, {
+        const statusCode = await this.project.processSpawn(commandMake, makeArgs, {
             cwd: cwd,
-            env: Object.assign({}, this.project.env, env),
+            env: env,
             shell: true,
         });
         if(statusCode !== 0) {

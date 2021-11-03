@@ -17,6 +17,7 @@ export function zbsProcessExec(
             child.stderr.on("data", callbacks.stderr);
         }
         child.on("close", resolve);
+        child.on("error", reject);
     });
 }
 
@@ -38,6 +39,7 @@ export function zbsProcessSpawn(
             child.stderr.on("data", callbacks.stderr);
         }
         child.on("close", resolve);
+        child.on("error", reject);
     });
 }
 

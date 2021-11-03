@@ -1,0 +1,111 @@
+{
+    "targets": [
+        {
+            "name": "test_extract_7z",
+            "actions": [
+                {
+                    "type": "extract",
+                    "extractPath": "7z/archive.7z",
+                    "outputPath": "7z/archive_7z"
+                },
+                {
+                    "type": "assert",
+                    "assertions": [
+                        ["files_equal", "7z/7z.txt", "7z/archive_7z/7z.txt"]
+                    ]
+                }
+            ]
+        },
+        {
+            "name": "test_extract_gz",
+            "actions": [
+                {
+                    "type": "extract",
+                    "extractPath": "gz/archive.gz",
+                    "outputPath": "gz/archive_gz.txt"
+                },
+                {
+                    "type": "assert",
+                    "assertions": [
+                        ["files_equal", "gz/gz.txt", "gz/archive_gz.txt"]
+                    ]
+                }
+            ]
+        },
+        {
+            "name": "test_extract_rar",
+            "actions": [
+                {
+                    "type": "extract",
+                    "extractPath": "rar/archive.rar",
+                    "outputPath": "rar/archive_rar"
+                },
+                {
+                    "type": "assert",
+                    "assertions": [
+                        ["files_equal", "rar/rar.txt", "rar/archive_rar/rar.txt"]
+                    ]
+                }
+            ]
+        },
+        {
+            "name": "test_extract_tar",
+            "actions": [
+                {
+                    "type": "extract",
+                    "extractPath": "tar/archive.tar",
+                    "outputPath": "tar/archive_tar"
+                },
+                {
+                    "type": "assert",
+                    "assertions": [
+                        ["files_equal", "tar/tar.txt", "tar/archive_tar/tar.txt"]
+                    ]
+                }
+            ]
+        },
+        {
+            "name": "test_extract_tar_gz",
+            "actions": [
+                {
+                    "type": "extract",
+                    "extractPath": "gz/archive.tgz",
+                    "outputPath": "gz/archive_tgz"
+                },
+                {
+                    "type": "extract",
+                    "extractPath": "gz/archive.tar.gz",
+                    "outputPath": "gz/archive_tar_gz"
+                },
+                {
+                    "type": "assert",
+                    "assertions": [
+                        ["files_equal", "gz/gz.txt", "gz/archive_tgz/gz.txt"]
+                    ]
+                },
+                {
+                    "type": "assert",
+                    "assertions": [
+                        ["files_equal", "gz/gz.txt", "gz/archive_tar_gz/gz.txt"]
+                    ]
+                }
+            ]
+        },
+        {
+            "name": "test_extract_zip",
+            "actions": [
+                {
+                    "type": "extract",
+                    "extractPath": "zip/archive.zip",
+                    "outputPath": "zip/archive_zip"
+                },
+                {
+                    "type": "assert",
+                    "assertions": [
+                        ["files_equal", "zip/zip.txt", "zip/archive_zip/zip.txt"]
+                    ]
+                }
+            ]
+        }
+    ]
+}

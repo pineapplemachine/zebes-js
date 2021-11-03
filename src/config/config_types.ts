@@ -17,7 +17,11 @@ export interface ZbsConfigHome {
     /** Abort execution if running more than this many actions in one target. */
     runMaxActions?: number;
     /** Command or executable to use for "make" actions. */
-    makeCommand?: string;
+    commandMake?: string;
+    /** Command or executable to use for extracting 7z archives. */
+    command7z?: string;
+    /** Command or executable to use for extracting rar archives. */
+    commandUnrar?: string;
 }
 
 /** Contains all configuration for managing a Zebes project. */
@@ -106,6 +110,13 @@ export interface ZbsConfigActionCommon {
     cwd?: string;
 }
 
+/** Action: Fail action unless conditions are met. */
+export interface ZbsConfigActionAssert extends ZbsConfigActionCommon {
+    type: "assert";
+    /** List of assertions, formatted as string lists. */
+    assertions: string[][];
+}
+
 /** Action: Compile source files. */
 export interface ZbsConfigActionCompile extends ZbsConfigActionCommon {
     type: "compile";
@@ -172,7 +183,7 @@ export interface ZbsConfigActionExtern extends ZbsConfigActionCommon {
 export interface ZbsConfigActionExtract extends ZbsConfigActionCommon {
     type: "extract";
     /** Extract files from this archive. */
-    archivePath: string;
+    extractPath: string;
     /** Output the extracted files to this directory path. */
     outputPath: string;
     /** Specify archive format, instead of detection by file extension. */
@@ -269,6 +280,7 @@ export interface ZbsConfigActionShell extends ZbsConfigActionCommon {
 
 /** Union type for all actions. */
 export type ZbsConfigAction = (
+    ZbsConfigActionAssert |
     ZbsConfigActionCompile |
     ZbsConfigActionCopy |
     ZbsConfigActionExtern |
@@ -283,6 +295,7 @@ export type ZbsConfigAction = (
 
 /** List of action type strings, as an array. */
 export const ZbsConfigActionTypes: string[] = [
+    "assert",
     "compile",
     "copy",
     "extern",
@@ -297,6 +310,7 @@ export const ZbsConfigActionTypes: string[] = [
 
 /** List of action type strings, as a union type. */
 export type ZbsConfigActionType = (
+    "assert" |
     "compile" |
     "copy" |
     "extern" |
@@ -337,6 +351,15 @@ export interface ZbsConfigTarget {
     libraries?: string[];
     /** Target execution entails running each action in series. */
     actions: (ZbsConfigAction | string)[];
+}
+
+/** Check if an action's type string is "assert". */
+export function zbsIsActionAssert(
+    value: ZbsConfigAction
+): value is ZbsConfigActionAssert {
+    return value && typeof(value) === "object" && (
+        value.type === "assert"
+    );
 }
 
 /** Check if an action's type string is "compile". */

@@ -5,6 +5,7 @@ import {ZbsProject} from "./project";
 import {zbsValueToString} from "./to_string";
 
 // These imports register action runner implementations as a side-effect
+import "./actions/action_assert";
 import "./actions/action_compile";
 import "./actions/action_copy";
 import "./actions/action_extern";

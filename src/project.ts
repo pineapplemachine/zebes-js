@@ -282,4 +282,25 @@ export class ZbsProject {
             false, command, args, options, callbacks
         );
     }
+    
+    async tryProcessSpawn(
+        command: string,
+        args: string[],
+        options: ZbsProjectSpawnOptions,
+        callbacks?: {
+            stdout?: (data: Buffer) => any,
+            stderr?: (data: Buffer) => any,
+        }
+    ): Promise<{status: number, error: any}> {
+        let statusCode: number = 0;
+        try {
+            statusCode = await this.processCommon(
+                false, command, args, options, callbacks
+            );
+        }
+        catch(error) {
+            return {status: 0, error: error};
+        }
+        return {status: statusCode, error: undefined};
+    }
 }

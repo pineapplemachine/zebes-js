@@ -63,7 +63,7 @@ const ZbsHomeConfigNumbers: ZbsHomeConfigMap = {
 };
 
 const ZbsHomeConfigStrings: ZbsHomeConfigMap = {
-    makeCommand: {
+    commandMake: {
         arg: "make_command",
         env: "ZEBES_MAKE_COMMAND",
     },

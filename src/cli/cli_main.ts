@@ -24,10 +24,12 @@ TODO: add some things
 document all the things
 Fix incremental getDependencies method
 action type: branch
+action type: assertions
 fetch FTP and SFTP support
 extract 7z support (use shell 7z command)
 extract gz support
 extract rar support (use shell rar command)
+extract xz, tar.xz/txz support
 fix logger spacing
 option to use symlinks to cache instead of copying
 --no-cache CLI arg to fetch and ignore cache

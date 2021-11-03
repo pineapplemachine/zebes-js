@@ -120,6 +120,11 @@ export class ZbsProjectActionRunner {
         return this.getConfigPath("cwd", this.project.path);
     }
     
+    getConfigEnv() {
+        const env = this.getConfigObjectAdditive<string>("env");
+        return Object.assign({}, this.project.env, env);
+    }
+    
     getConfigListAdditive<T>(key: string): T[] {
         return this.configResolver.getListAdditive<T>(key);
     }

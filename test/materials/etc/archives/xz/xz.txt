@@ -1,0 +1,5 @@
+XZ Utils (previously LZMA Utils) is a set of free software command-line lossless data compressors, including lzma and xz, for Unix-like operating systems and, from version 5.0 onwards, Microsoft Windows.
+
+In most cases, xz achieves higher compression rates than alternatives like gzip and bzip2. Decompression speed is faster than bzip2, but slower than gzip. Compression can be much slower than gzip, and is slower than bzip2 for high levels of compression, and is most useful when a compressed file will be used many times.[3][4] 
+
+https://en.wikipedia.org/wiki/XZ_Utils

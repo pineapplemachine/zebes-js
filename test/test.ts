@@ -149,6 +149,24 @@ canary.test(`d/hello - Build trivial D program`, async function() {
     assert(result.stdout.startsWith("Hello, world!"));
 });
 
+canary.test(`etc/archives - Archive extraction`, async function() {
+    const filesDir = cloneMaterials("etc/archives");
+    assert(fs.existsSync(path.join(filesDir, "zebes.json")));
+    await zebes(filesDir, ["run", "test_extract_7z"]);
+    assert(fs.existsSync(path.join(filesDir, "7z/archive_7z/7z.txt")));
+    await zebes(filesDir, ["run", "test_extract_gz"]);
+    assert(fs.existsSync(path.join(filesDir, "gz/archive_gz.txt")));
+    await zebes(filesDir, ["run", "test_extract_zip"]);
+    assert(fs.existsSync(path.join(filesDir, "zip/archive_zip/zip.txt")));
+    await zebes(filesDir, ["run", "test_extract_rar"]);
+    assert(fs.existsSync(path.join(filesDir, "rar/archive_rar/rar.txt")));
+    await zebes(filesDir, ["run", "test_extract_tar"]);
+    assert(fs.existsSync(path.join(filesDir, "tar/archive_tar/tar.txt")));
+    await zebes(filesDir, ["run", "test_extract_tar_gz"]);
+    assert(fs.existsSync(path.join(filesDir, "gz/archive_tgz/gz.txt")));
+    assert(fs.existsSync(path.join(filesDir, "gz/archive_tar_gz/gz.txt")));
+});
+
 canary.test(`etc/files - File system operations (Dry run)`, async function() {
     const filesDir = cloneMaterials("etc/files");
     assert(fs.existsSync(path.join(filesDir, "zebes.json")));
